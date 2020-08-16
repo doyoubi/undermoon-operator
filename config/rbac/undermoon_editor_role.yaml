@@ -1,0 +1,24 @@
+# permissions for end users to edit undermoons.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: undermoon-editor-role
+rules:
+- apiGroups:
+  - cache.undermoon.operator.api
+  resources:
+  - undermoons
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cache.undermoon.operator.api
+  resources:
+  - undermoons/status
+  verbs:
+  - get

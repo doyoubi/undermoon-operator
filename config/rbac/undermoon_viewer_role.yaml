@@ -1,0 +1,20 @@
+# permissions for end users to view undermoons.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: undermoon-viewer-role
+rules:
+- apiGroups:
+  - cache.undermoon.operator.api
+  resources:
+  - undermoons
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cache.undermoon.operator.api
+  resources:
+  - undermoons/status
+  verbs:
+  - get
