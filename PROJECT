@@ -1,0 +1,7 @@
+domain: undermoon.operator.api
+layout: go.kubebuilder.io/v2
+projectName: undermoon-operator
+repo: github.com/doyoubi/undermoon-operator
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}
