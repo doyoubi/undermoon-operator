@@ -77,6 +77,7 @@ type UndermoonStatus struct {
 // +kubebuilder:subresource:status
 
 // Undermoon is the Schema for the undermoons API
+// +kubebuilder:subresource:status
 type Undermoon struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

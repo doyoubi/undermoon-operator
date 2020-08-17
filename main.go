@@ -67,11 +67,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.UndermoonReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Undermoon"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	if err = (controllers.NewUndermoonReconciler(
+		mgr.GetClient(),
+		ctrl.Log.WithName("controllers").WithName("Undermoon"),
+		mgr.GetScheme(),
+	)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Undermoon")
 		os.Exit(1)
 	}
