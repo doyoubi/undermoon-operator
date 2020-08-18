@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/doyoubi/undermoon-operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
@@ -40,7 +40,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(cachev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(undermoonv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -60,7 +60,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "3bbec2d2.undermoon.operator.api",
+		LeaderElectionID:   "3bbec2d2.doyoubi.mydomain",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 )
 
@@ -14,7 +14,7 @@ func newMetaController() *metaController {
 	return &metaController{client: client}
 }
 
-func (con *metaController) reconcileMeta(reqLogger logr.Logger, masterBrokerAddress string, replicaAddresses []string, proxies []serverProxyMeta, cr *cachev1alpha1.Undermoon, storageAllReady bool) (*clusterInfo, error) {
+func (con *metaController) reconcileMeta(reqLogger logr.Logger, masterBrokerAddress string, replicaAddresses []string, proxies []serverProxyMeta, cr *undermoonv1alpha1.Undermoon, storageAllReady bool) (*clusterInfo, error) {
 	err := con.setBrokerReplicas(reqLogger, masterBrokerAddress, replicaAddresses, cr)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (con *metaController) reconcileMeta(reqLogger logr.Logger, masterBrokerAddr
 	return info, nil
 }
 
-func (con *metaController) setBrokerReplicas(reqLogger logr.Logger, masterBrokerAddress string, replicaAddresses []string, cr *cachev1alpha1.Undermoon) error {
+func (con *metaController) setBrokerReplicas(reqLogger logr.Logger, masterBrokerAddress string, replicaAddresses []string, cr *undermoonv1alpha1.Undermoon) error {
 	err := con.client.setBrokerReplicas(masterBrokerAddress, replicaAddresses)
 	if err != nil {
 		reqLogger.Error(err, "failed to set broker replicas", "masterBrokerAddress", masterBrokerAddress, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
@@ -59,7 +59,7 @@ func (con *metaController) setBrokerReplicas(reqLogger logr.Logger, masterBroker
 	return nil
 }
 
-func (con *metaController) changeMeta(reqLogger logr.Logger, masterBrokerAddress string, cr *cachev1alpha1.Undermoon, info *clusterInfo) error {
+func (con *metaController) changeMeta(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon, info *clusterInfo) error {
 	if info.IsMigrating {
 		return errRetryReconciliation
 	}
@@ -75,7 +75,7 @@ func (con *metaController) changeMeta(reqLogger logr.Logger, masterBrokerAddress
 	return nil
 }
 
-func (con *metaController) reconcileServerProxyRegistry(reqLogger logr.Logger, masterBrokerAddress string, proxies []serverProxyMeta, cr *cachev1alpha1.Undermoon) error {
+func (con *metaController) reconcileServerProxyRegistry(reqLogger logr.Logger, masterBrokerAddress string, proxies []serverProxyMeta, cr *undermoonv1alpha1.Undermoon) error {
 	err := con.registerServerProxies(reqLogger, masterBrokerAddress, proxies, cr)
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func (con *metaController) reconcileServerProxyRegistry(reqLogger logr.Logger, m
 	return nil
 }
 
-func (con *metaController) registerServerProxies(reqLogger logr.Logger, masterBrokerAddress string, proxies []serverProxyMeta, cr *cachev1alpha1.Undermoon) error {
+func (con *metaController) registerServerProxies(reqLogger logr.Logger, masterBrokerAddress string, proxies []serverProxyMeta, cr *undermoonv1alpha1.Undermoon) error {
 	for _, proxy := range proxies {
 		err := con.client.registerServerProxy(masterBrokerAddress, proxy)
 		if err != nil {
@@ -99,7 +99,7 @@ func (con *metaController) registerServerProxies(reqLogger logr.Logger, masterBr
 	return nil
 }
 
-func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, masterBrokerAddress string, proxies []serverProxyMeta, cr *cachev1alpha1.Undermoon) error {
+func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, masterBrokerAddress string, proxies []serverProxyMeta, cr *undermoonv1alpha1.Undermoon) error {
 	existingProxies, err := con.client.getServerProxies(masterBrokerAddress)
 	if err != nil {
 		reqLogger.Error(err, "failed to get server proxy addresses",
@@ -138,7 +138,7 @@ func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, master
 	return nil
 }
 
-func (con *metaController) createCluster(reqLogger logr.Logger, masterBrokerAddress string, cr *cachev1alpha1.Undermoon) error {
+func (con *metaController) createCluster(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon) error {
 	exists, err := con.client.clusterExists(masterBrokerAddress, cr.Spec.ClusterName)
 	if err != nil {
 		reqLogger.Error(err, "failed to check whether cluster exists",
@@ -161,7 +161,7 @@ func (con *metaController) createCluster(reqLogger logr.Logger, masterBrokerAddr
 	return nil
 }
 
-func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerAddress string, cr *cachev1alpha1.Undermoon) error {
+func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon) error {
 	chunkNumber := int(cr.Spec.ChunkNumber)
 	clusterName := cr.Spec.ClusterName
 
@@ -195,7 +195,7 @@ func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerA
 	return nil
 }
 
-func (con *metaController) getClusterInfo(reqLogger logr.Logger, masterBrokerAddress string, cr *cachev1alpha1.Undermoon) (*clusterInfo, error) {
+func (con *metaController) getClusterInfo(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon) (*clusterInfo, error) {
 	info, err := con.client.getClusterInfo(masterBrokerAddress, cr.Spec.ClusterName)
 	if err != nil {
 		reqLogger.Error(err, "failed to get cluster info",
@@ -206,7 +206,7 @@ func (con *metaController) getClusterInfo(reqLogger logr.Logger, masterBrokerAdd
 	return info, nil
 }
 
-func (con *metaController) fixBrokerEpoch(reqLogger logr.Logger, masterBrokerAddress string, maxEpochFromServerProxy int64, cr *cachev1alpha1.Undermoon) error {
+func (con *metaController) fixBrokerEpoch(reqLogger logr.Logger, masterBrokerAddress string, maxEpochFromServerProxy int64, cr *undermoonv1alpha1.Undermoon) error {
 	epoch, err := con.client.getEpoch(masterBrokerAddress)
 	if err != nil {
 		reqLogger.Error(err, "failed to get global epoch from broker",

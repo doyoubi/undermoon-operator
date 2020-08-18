@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +22,7 @@ func newCoordinatorController(r *UndermoonReconciler) *coordinatorController {
 	return &coordinatorController{r: r, coordPool: coordPool}
 }
 
-func (con *coordinatorController) createCoordinator(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
+func (con *coordinatorController) createCoordinator(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
 	coordinatorService, err := createServiceGuard(func() (*corev1.Service, error) {
 		return con.getOrCreateCoordinatorService(reqLogger, cr)
 	})
@@ -42,7 +42,7 @@ func (con *coordinatorController) createCoordinator(reqLogger logr.Logger, cr *c
 	return coordinatorStatefulSet, coordinatorService, nil
 }
 
-func (con *coordinatorController) getOrCreateCoordinatorService(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*corev1.Service, error) {
+func (con *coordinatorController) getOrCreateCoordinatorService(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.Service, error) {
 	service := createCoordinatorService(cr)
 
 	if err := controllerutil.SetControllerReference(cr, service, con.r.scheme); err != nil {
@@ -74,7 +74,7 @@ func (con *coordinatorController) getOrCreateCoordinatorService(reqLogger logr.L
 	return found, nil
 }
 
-func (con *coordinatorController) getOrCreateCoordinatorStatefulSet(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*appsv1.StatefulSet, error) {
+func (con *coordinatorController) getOrCreateCoordinatorStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, error) {
 	coordinator := createCoordinatorStatefulSet(cr)
 
 	if err := controllerutil.SetControllerReference(cr, coordinator, con.r.scheme); err != nil {
@@ -135,7 +135,7 @@ func (con *coordinatorController) coordiantorAllReady(coordinatorStatefulSet *ap
 	return ready, nil
 }
 
-func (con *coordinatorController) configSetBroker(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon, coordinatorService *corev1.Service, masterBrokerAddress string) error {
+func (con *coordinatorController) configSetBroker(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, coordinatorService *corev1.Service, masterBrokerAddress string) error {
 	endpoints, err := getEndpoints(con.r.client, coordinatorService.Name, coordinatorService.Namespace)
 	if err != nil {
 		reqLogger.Error(err, "failed to get coordinator endpoints", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)

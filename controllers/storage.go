@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +21,7 @@ const storageTopologyKey = "undermoon-storage-topology-key"
 
 // This service is only used internally for getting the created server proxies
 // which have not received UMCTL SETCLUSTER.
-func createStorageService(cr *cachev1alpha1.Undermoon) *corev1.Service {
+func createStorageService(cr *undermoonv1alpha1.Undermoon) *corev1.Service {
 	undermoonName := cr.ObjectMeta.Name
 
 	labels := map[string]string{
@@ -58,7 +58,7 @@ func createStorageService(cr *cachev1alpha1.Undermoon) *corev1.Service {
 // This is the service exposed to the users.
 // It only exposes those server proxies which have received UMCTL SETCLUSTER
 // and had metadata set up.
-func createStoragePublicService(cr *cachev1alpha1.Undermoon) *corev1.Service {
+func createStoragePublicService(cr *undermoonv1alpha1.Undermoon) *corev1.Service {
 	undermoonName := cr.ObjectMeta.Name
 
 	labels := map[string]string{
@@ -96,7 +96,7 @@ func StoragePublicServiceName(undermoonName string) string {
 	return undermoonName
 }
 
-func createStorageStatefulSet(cr *cachev1alpha1.Undermoon) *appsv1.StatefulSet {
+func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSet {
 	labels := map[string]string{
 		"undermoonService":     undermoonServiceTypeStorage,
 		"undermoonName":        cr.ObjectMeta.Name,
@@ -246,7 +246,7 @@ func createStorageStatefulSet(cr *cachev1alpha1.Undermoon) *appsv1.StatefulSet {
 	}
 }
 
-func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, cr *cachev1alpha1.Undermoon) corev1.Container {
+func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, cr *undermoonv1alpha1.Undermoon) corev1.Container {
 	portStr := fmt.Sprintf("%d", port)
 	return corev1.Container{
 		Name:            fmt.Sprintf("%s-%d", redisContainerName, index),
@@ -294,18 +294,18 @@ func genStorageFQDN(podName, undermoonName, namespace string) string {
 	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", podName, StorageServiceName(undermoonName), namespace)
 }
 
-func genStorageFQDNFromName(name string, cr *cachev1alpha1.Undermoon) string {
+func genStorageFQDNFromName(name string, cr *undermoonv1alpha1.Undermoon) string {
 	host := genStorageFQDN(name, cr.ObjectMeta.Name, cr.ObjectMeta.Namespace)
 	return host
 }
 
-func genStorageAddressFromName(name string, cr *cachev1alpha1.Undermoon) string {
+func genStorageAddressFromName(name string, cr *undermoonv1alpha1.Undermoon) string {
 	host := genStorageFQDNFromName(name, cr)
 	addr := fmt.Sprintf("%s:%d", host, cr.Spec.Port)
 	return addr
 }
 
-func genStorageStatefulSetAddrs(cr *cachev1alpha1.Undermoon) []string {
+func genStorageStatefulSetAddrs(cr *undermoonv1alpha1.Undermoon) []string {
 	addrs := []string{}
 	replicaNum := int(cr.Spec.ChunkNumber) * halfChunkNodeNumber
 	for _, name := range genStorageNames(cr.ObjectMeta.Name, replicaNum) {

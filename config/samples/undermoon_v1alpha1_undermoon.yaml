@@ -1,4 +1,4 @@
-apiVersion: cache.undermoon.operator.api/v1alpha1
+apiVersion: undermoon.doyoubi.mydomain/v1alpha1
 kind: Undermoon
 metadata:
   name: undermoon-sample

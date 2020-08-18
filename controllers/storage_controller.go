@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +24,7 @@ func newStorageController(r *UndermoonReconciler) *storageController {
 	return &storageController{r: r, proxyPool: pool}
 }
 
-func (con *storageController) createStorage(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
+func (con *storageController) createStorage(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
 	_, err := createServiceGuard(func() (*corev1.Service, error) {
 		service := createStoragePublicService(cr)
 		return con.getOrCreateStorageService(reqLogger, cr, service)
@@ -60,7 +60,7 @@ func (con *storageController) createStorage(reqLogger logr.Logger, cr *cachev1al
 	return storage, storageService, nil
 }
 
-func (con *storageController) getOrCreateStorageService(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon, service *corev1.Service) (*corev1.Service, error) {
+func (con *storageController) getOrCreateStorageService(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, service *corev1.Service) (*corev1.Service, error) {
 	if err := controllerutil.SetControllerReference(cr, service, con.r.scheme); err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (con *storageController) getOrCreateStorageService(reqLogger logr.Logger, c
 	return found, nil
 }
 
-func (con *storageController) getOrCreateStorageStatefulSet(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*appsv1.StatefulSet, error) {
+func (con *storageController) getOrCreateStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, error) {
 	storage := createStorageStatefulSet(cr)
 
 	if err := controllerutil.SetControllerReference(cr, storage, con.r.scheme); err != nil {
@@ -125,7 +125,7 @@ func (con *storageController) getOrCreateStorageStatefulSet(reqLogger logr.Logge
 	return found, nil
 }
 
-func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon, storage *appsv1.StatefulSet, info *clusterInfo) (*appsv1.StatefulSet, error) {
+func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet, info *clusterInfo) (*appsv1.StatefulSet, error) {
 	expectedNodeNumber := int(cr.Spec.ChunkNumber) * chunkNodeNumber
 	if info.NodeNumberWithSlots > expectedNodeNumber {
 		reqLogger.Info("Need to wait for slot migration to scale down storage", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
@@ -144,7 +144,7 @@ func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger,
 	return storage, nil
 }
 
-func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon, storage *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
+func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
 	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
 	storage.Spec.Replicas = &replicaNum
 
@@ -169,7 +169,7 @@ func (con *storageController) getServiceEndpointsNum(storageService *corev1.Serv
 	return len(endpoints), nil
 }
 
-func (con *storageController) storageReady(storageService *corev1.Service, cr *cachev1alpha1.Undermoon) (bool, error) {
+func (con *storageController) storageReady(storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) (bool, error) {
 	n, err := con.getServiceEndpointsNum(storageService)
 	if err != nil {
 		return false, err
@@ -179,7 +179,7 @@ func (con *storageController) storageReady(storageService *corev1.Service, cr *c
 	return ready, nil
 }
 
-func (con *storageController) storageAllReady(storageService *corev1.Service, cr *cachev1alpha1.Undermoon) (bool, error) {
+func (con *storageController) storageAllReady(storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) (bool, error) {
 	n, err := con.getServiceEndpointsNum(storageService)
 	if err != nil {
 		return false, err
@@ -189,7 +189,7 @@ func (con *storageController) storageAllReady(storageService *corev1.Service, cr
 	return ready, nil
 }
 
-func (con *storageController) storageAllReadyAndStable(storageService *corev1.Service, storageStatefulSet *appsv1.StatefulSet, cr *cachev1alpha1.Undermoon) (bool, error) {
+func (con *storageController) storageAllReadyAndStable(storageService *corev1.Service, storageStatefulSet *appsv1.StatefulSet, cr *undermoonv1alpha1.Undermoon) (bool, error) {
 	ready, err := con.storageAllReady(storageService, cr)
 	if err != nil {
 		return false, err
@@ -208,7 +208,7 @@ func (con *storageController) storageAllReadyAndStable(storageService *corev1.Se
 	return true, nil
 }
 
-func (con *storageController) getServerProxies(reqLogger logr.Logger, storageService *corev1.Service, cr *cachev1alpha1.Undermoon) ([]serverProxyMeta, error) {
+func (con *storageController) getServerProxies(reqLogger logr.Logger, storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) ([]serverProxyMeta, error) {
 	endpoints, err := getEndpoints(con.r.client, storageService.Name, storageService.Namespace)
 	if err != nil {
 		reqLogger.Error(err, "Failed to get endpoints of server proxies", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
@@ -233,7 +233,7 @@ func (con *storageController) getServerProxies(reqLogger logr.Logger, storageSer
 	return proxies, nil
 }
 
-func (con *storageController) getMaxEpoch(reqLogger logr.Logger, storageService *corev1.Service, cr *cachev1alpha1.Undermoon) (int64, error) {
+func (con *storageController) getMaxEpoch(reqLogger logr.Logger, storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) (int64, error) {
 	endpoints, err := getEndpoints(con.r.client, storageService.Name, storageService.Namespace)
 	if err != nil {
 		reqLogger.Error(err, "Failed to get endpoints of server proxies", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)

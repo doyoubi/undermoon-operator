@@ -3,7 +3,7 @@ package controllers
 import (
 	"fmt"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +15,7 @@ const coordinatorContainerName = "coordinator"
 const undermoonServiceTypeCoordinator = "coordinator"
 const coordinatorTopologyKey = "undermoon-broker-topology-key"
 
-func createCoordinatorService(cr *cachev1alpha1.Undermoon) *corev1.Service {
+func createCoordinatorService(cr *undermoonv1alpha1.Undermoon) *corev1.Service {
 	undermoonName := cr.ObjectMeta.Name
 
 	labels := map[string]string{
@@ -49,7 +49,7 @@ func CoordinatorServiceName(undermoonName string) string {
 	return fmt.Sprintf("%s-cd-svc", undermoonName)
 }
 
-func createCoordinatorStatefulSet(cr *cachev1alpha1.Undermoon) *appsv1.StatefulSet {
+func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSet {
 	labels := map[string]string{
 		"undermoonService":     undermoonServiceTypeCoordinator,
 		"undermoonName":        cr.ObjectMeta.Name,
@@ -145,7 +145,7 @@ func genCoordinatorFQDN(podName, undermoonName, namespace string) string {
 	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", podName, CoordinatorServiceName(undermoonName), namespace)
 }
 
-func genCoordinatorStatefulSetAddrs(cr *cachev1alpha1.Undermoon) []string {
+func genCoordinatorStatefulSetAddrs(cr *undermoonv1alpha1.Undermoon) []string {
 	addrs := []string{}
 	for _, name := range genCoordinatorNames(cr.ObjectMeta.Name) {
 		addr := genCoordinatorAddressFromName(name, cr)
@@ -154,7 +154,7 @@ func genCoordinatorStatefulSetAddrs(cr *cachev1alpha1.Undermoon) []string {
 	return addrs
 }
 
-func genCoordinatorAddressFromName(name string, cr *cachev1alpha1.Undermoon) string {
+func genCoordinatorAddressFromName(name string, cr *undermoonv1alpha1.Undermoon) string {
 	host := genCoordinatorFQDN(name, cr.ObjectMeta.Name, cr.ObjectMeta.Namespace)
 	addr := fmt.Sprintf("%s:%d", host, coordinatorPort)
 	return addr

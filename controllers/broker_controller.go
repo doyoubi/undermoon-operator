@@ -3,7 +3,7 @@ package controllers
 import (
 	"context"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,7 +23,7 @@ func newBrokerController(r *UndermoonReconciler) *memBrokerController {
 	return &memBrokerController{r: r, client: client}
 }
 
-func (con *memBrokerController) createBroker(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
+func (con *memBrokerController) createBroker(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
 	brokerService, err := createServiceGuard(func() (*corev1.Service, error) {
 		return con.getOrCreateBrokerService(reqLogger, cr)
 	})
@@ -43,7 +43,7 @@ func (con *memBrokerController) createBroker(reqLogger logr.Logger, cr *cachev1a
 	return brokerStatefulSet, brokerService, nil
 }
 
-func (con *memBrokerController) getOrCreateBrokerService(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*corev1.Service, error) {
+func (con *memBrokerController) getOrCreateBrokerService(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.Service, error) {
 	service := createBrokerService(cr)
 
 	if err := controllerutil.SetControllerReference(cr, service, con.r.scheme); err != nil {
@@ -75,7 +75,7 @@ func (con *memBrokerController) getOrCreateBrokerService(reqLogger logr.Logger, 
 	return found, nil
 }
 
-func (con *memBrokerController) getOrCreateBrokerStatefulSet(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon) (*appsv1.StatefulSet, error) {
+func (con *memBrokerController) getOrCreateBrokerStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, error) {
 	broker := createBrokerStatefulSet(cr)
 
 	if err := controllerutil.SetControllerReference(cr, broker, con.r.scheme); err != nil {
@@ -136,7 +136,7 @@ func (con *memBrokerController) brokerAllReady(brokerStatefulSet *appsv1.Statefu
 	return ready, nil
 }
 
-func (con *memBrokerController) reconcileMaster(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon, brokerService *corev1.Service) (string, []string, error) {
+func (con *memBrokerController) reconcileMaster(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, brokerService *corev1.Service) (string, []string, error) {
 	endpoints, err := getEndpoints(con.r.client, brokerService.Name, brokerService.Namespace)
 	if err != nil {
 		reqLogger.Error(err, "failed to get broker endpoints", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
@@ -169,7 +169,7 @@ func (con *memBrokerController) reconcileMaster(reqLogger logr.Logger, cr *cache
 	return currMaster, replicaAddresses, nil
 }
 
-func (con *memBrokerController) setMasterBrokerStatus(reqLogger logr.Logger, cr *cachev1alpha1.Undermoon, masterBrokerAddress string) error {
+func (con *memBrokerController) setMasterBrokerStatus(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, masterBrokerAddress string) error {
 	cr.Status.MasterBrokerAddress = masterBrokerAddress
 	err := con.r.client.Status().Update(context.TODO(), cr)
 	if err != nil {

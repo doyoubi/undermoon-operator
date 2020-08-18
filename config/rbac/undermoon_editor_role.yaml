@@ -5,7 +5,7 @@ metadata:
   name: undermoon-editor-role
 rules:
 - apiGroups:
-  - cache.undermoon.operator.api
+  - undermoon.doyoubi.mydomain
   resources:
   - undermoons
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cache.undermoon.operator.api
+  - undermoon.doyoubi.mydomain
   resources:
   - undermoons/status
   verbs:

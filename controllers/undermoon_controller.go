@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 )
 
 // NewUndermoonReconciler returns a UndermoonReconciler
@@ -59,8 +59,8 @@ type UndermoonReconciler struct {
 	metaCon       *metaController
 }
 
-// +kubebuilder:rbac:groups=cache.undermoon.operator.api,resources=undermoons,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cache.undermoon.operator.api,resources=undermoons/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
@@ -70,7 +70,7 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 	reqLogger.Info("Reconciling Undermoon")
 
 	// Fetch the Undermoon instance
-	instance := &cachev1alpha1.Undermoon{}
+	instance := &undermoonv1alpha1.Undermoon{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -187,7 +187,7 @@ type umResource struct {
 	storageService         *corev1.Service
 }
 
-func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *cachev1alpha1.Undermoon) (*umResource, error) {
+func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) (*umResource, error) {
 	brokerStatefulSet, brokerService, err := r.brokerCon.createBroker(reqLogger, instance)
 	if err != nil {
 		reqLogger.Error(err, "failed to create broker", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
@@ -216,7 +216,7 @@ func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *c
 	}, nil
 }
 
-func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, reqLogger logr.Logger, instance *cachev1alpha1.Undermoon) (bool, error) {
+func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) (bool, error) {
 	ready, err := r.brokerCon.brokerReady(resource.brokerStatefulSet, resource.brokerService)
 	if err != nil {
 		reqLogger.Error(err, "failed to check broker ready", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
@@ -242,7 +242,7 @@ func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, re
 
 func (r *UndermoonReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cachev1alpha1.Undermoon{}).
+		For(&undermoonv1alpha1.Undermoon{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Pod{}).

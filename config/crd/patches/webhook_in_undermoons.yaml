@@ -3,7 +3,7 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: undermoons.cache.undermoon.operator.api
+  name: undermoons.undermoon.doyoubi.mydomain
 spec:
   conversion:
     strategy: Webhook

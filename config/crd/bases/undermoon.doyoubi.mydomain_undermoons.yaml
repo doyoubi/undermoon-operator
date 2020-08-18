@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: undermoons.cache.undermoon.operator.api
+  name: undermoons.undermoon.doyoubi.mydomain
 spec:
-  group: cache.undermoon.operator.api
+  group: undermoon.doyoubi.mydomain
   names:
     kind: Undermoon
     listKind: UndermoonList

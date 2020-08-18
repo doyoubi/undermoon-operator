@@ -3,7 +3,7 @@ package controllers
 import (
 	"fmt"
 
-	cachev1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +15,7 @@ const brokerContainerName = "broker"
 const undermoonServiceTypeBroker = "broker"
 const brokerTopologyKey = "undermoon-broker-topology-key"
 
-func createBrokerService(cr *cachev1alpha1.Undermoon) *corev1.Service {
+func createBrokerService(cr *undermoonv1alpha1.Undermoon) *corev1.Service {
 	undermoonName := cr.ObjectMeta.Name
 
 	labels := map[string]string{
@@ -49,7 +49,7 @@ func BrokerServiceName(undermoonName string) string {
 	return fmt.Sprintf("%s-bk-svc", undermoonName)
 }
 
-func createBrokerStatefulSet(cr *cachev1alpha1.Undermoon) *appsv1.StatefulSet {
+func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSet {
 	labels := map[string]string{
 		"undermoonService":     undermoonServiceTypeBroker,
 		"undermoonName":        cr.ObjectMeta.Name,
@@ -169,7 +169,7 @@ func genBrokerFQDN(podName, undermoonName, namespace string) string {
 	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", podName, BrokerServiceName(undermoonName), namespace)
 }
 
-func genBrokerStatefulSetAddrs(cr *cachev1alpha1.Undermoon) []string {
+func genBrokerStatefulSetAddrs(cr *undermoonv1alpha1.Undermoon) []string {
 	addrs := []string{}
 	for _, name := range genBrokerNames(cr.ObjectMeta.Name) {
 		addr := genBrokerAddressFromName(name, cr)
@@ -178,7 +178,7 @@ func genBrokerStatefulSetAddrs(cr *cachev1alpha1.Undermoon) []string {
 	return addrs
 }
 
-func genBrokerAddressFromName(name string, cr *cachev1alpha1.Undermoon) string {
+func genBrokerAddressFromName(name string, cr *undermoonv1alpha1.Undermoon) string {
 	host := genBrokerFQDN(name, cr.ObjectMeta.Name, cr.ObjectMeta.Namespace)
 	addr := fmt.Sprintf("%s:%d", host, brokerPort)
 	return addr
