@@ -1,0 +1,37 @@
+# Default values for undermoon-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+cluster:
+  clusterName: example-undermoon
+  chunkNumber: 1
+  maxMemory: 32  # in MBs
+  port: 5299
+  activeRedirection: false
+  proxyThreads: 2
+
+image:
+  undermoonImage: doyoubi/undermoon:0.3.1-buster
+  undermoonImagePullPolicy: IfNotPresent
+  redisImage: redis:5.0.9
+
+resources:
+  brokerResources:
+    limits:
+      {}
+      # cpu: "0.05"
+  coordinatorResources:
+    limits:
+      {}
+      # cpu: "0.05"
+  proxyResources:
+    limits:
+      {}
+      # cpu: "0.05"
+  redisResources:
+    limits:
+      {}
+      # cpu: "0.05"
+
+nameOverride: ""
+fullnameOverride: ""

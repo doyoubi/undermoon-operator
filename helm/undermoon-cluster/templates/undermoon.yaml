@@ -1,0 +1,22 @@
+apiVersion: undermoon.operator.api/v1alpha1
+kind: Undermoon
+metadata:
+  name: {{ include "undermoon-cluster.fullname" . }}
+spec:
+  clusterName: "{{ .Values.cluster.clusterName }}"
+  chunkNumber: {{ .Values.cluster.chunkNumber }}
+  maxMemory: {{ .Values.cluster.maxMemory }}
+  port: {{ .Values.cluster.port }}
+  activeRedirection: {{ .Values.cluster.activeRedirection }}
+  proxyThreads: {{ .Values.cluster.proxyThreads }}
+  undermoonImage: "{{ .Values.image.undermoonImage }}"
+  undermoonImagePullPolicy: "{{ .Values.image.undermoonImagePullPolicy }}"
+  redisImage: "{{ .Values.image.redisImage }}"
+  brokerResources:
+    {{- toYaml .Values.resources.brokerResources | nindent 4 }}
+  coordinatorResources:
+    {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
+  proxyResources:
+    {{- toYaml .Values.resources.proxyResources | nindent 4 }}
+  redisResources:
+    {{- toYaml .Values.resources.redisResources | nindent 4 }}
