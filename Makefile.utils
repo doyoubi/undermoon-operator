@@ -1,0 +1,158 @@
+OPERATOR_VERSION=$(VERSION)
+OPERATOR_HELM_VERSION=0.1.0
+CHECKER_HELM_VERSION=0.1.0
+
+TEST_K8S_VER="v1.18.2"
+TEST_ETCD_VER="v3.4.3"
+ENVTEST_GOPATH="$(shell pwd)/testbin/build_gopath"
+
+install-envtest:
+	# Can only use `sh`.
+	GOPATH="$(ENVTEST_GOPATH)" sh scripts/setup_envtest_bins.sh $(TEST_K8S_VER) $(TEST_ETCD_VER)
+
+build: build-image build-helm
+	echo "build done"
+
+build-image:
+	echo "building undermoon-operator:$(OPERATOR_VERSION)"
+	make docker-build
+	make docker-push
+
+build-helm:
+	helm package helm/undermoon-operator
+	helm package helm/undermoon-cluster
+
+install-helm-package:
+	helm package helm/undermoon-operator
+	helm package helm/undermoon-cluster
+	helm install \
+		--set "image.operatorImage=$(IMG_NAME):$(OPERATOR_VERSION)" \
+		example-operator "undermoon-operator-$(OPERATOR_HELM_VERSION).tgz"
+	helm install \
+		--set "image.undermoonImage=localhost:5000/undermoon_test" \
+		example-undermoon "undermoon-cluster-$(OPERATOR_HELM_VERSION).tgz"
+
+uninstall-helm-package:
+	helm uninstall example-undermoon || true
+	helm uninstall example-operator || true
+
+lint:
+	go fmt $(shell go list ./...)
+	golint ./pkg/controller...
+	golint ./test/e2e...
+	# Helm Charts development:
+	helm lint helm/undermoon-operator --strict
+	helm lint helm/undermoon-cluster --strict
+	helm lint chaostest/undermoon-checker --strict
+
+lint-chaostest-script:
+	# pip install -r chaostest/ctrl_requirements.txt
+	black chaostest
+	pylint --errors-only chaostest
+
+OPERATOR_CR_FILE=config/samples/undermoon_v1alpha1_undermoon.yaml
+HELM_CHARTS_CRD_FILE=helm/undermoon-operator/templates/undermoon.operator.api_undermoons_crd.yaml
+HELM_CHARTS_RBAC_FILE=helm/undermoon-operator/templates/operator-rbac.yaml
+
+HELM_CHART_OPERATOR_FILE=helm/undermoon-operator/templates/operator.yaml
+HELM_CHART_RBAC_FILE=helm/undermoon-operator/templates/operator-rbac.yaml
+HELM_CHART_CRD_FILE=helm/undermoon-operator/templates/crd.yaml
+HELM_CHART_UNDERMOON_FILE=helm/undermoon-cluster/templates/undermoon.yaml
+
+update-types:
+	make generate
+	make manifests
+	# Update crd file in Helm Charts
+	$(KUSTOMIZE) build config/rbac/helm > $(HELM_CHART_RBAC_FILE)
+	$(KUSTOMIZE) build config/manager/overlays/helm > $(HELM_CHART_OPERATOR_FILE)
+	$(KUSTOMIZE) build config/crd > $(HELM_CHART_CRD_FILE)
+
+	# echo '# DO NOT MODIFY! This file is copied from $(OPERATOR_CRD_FILE)' > $(HELM_CHARTS_CRD_FILE)
+	# cat $(OPERATOR_CRD_FILE) >> $(HELM_CHARTS_CRD_FILE)
+	# echo '# DO NOT MODIFY! This file is generated from several files in deploy/' > $(HELM_CHARTS_RBAC_FILE)
+	# cat deploy/service_account.yaml >> $(HELM_CHARTS_RBAC_FILE)
+	# echo '---' >> $(HELM_CHARTS_RBAC_FILE)
+	# cat deploy/role.yaml >> $(HELM_CHARTS_RBAC_FILE)
+	# echo '---' >> $(HELM_CHARTS_RBAC_FILE)
+	# cat deploy/role_binding.yaml >> $(HELM_CHARTS_RBAC_FILE)
+
+kind-env-start:
+	# Run kind with image registry instead of:
+	# kind create cluster
+	# See https://kind.sigs.k8s.io/docs/user/local-registry/
+	# When using image built locally, we need to run `docker run push localhost:5000/docker_image_name`.
+	scripts/kind-with-registry.sh
+
+kind-env-stop:
+	./scripts/stop-kind.sh
+
+list-images:
+	curl http://localhost:5000/v2/_catalog
+
+debug-build:
+	operator-sdk build localhost:5000/undermoon-operator:$(OPERATOR_VERSION)
+	docker push localhost:5000/undermoon-operator:$(OPERATOR_VERSION)
+
+debug-run:
+	make install
+	cd config/default/ && kustomize edit set namespace "default" && cd ../..
+	make deploy
+
+debug-logs:
+	./scripts/operator_logs.sh
+
+debug-start:
+	kubectl apply -f $(OPERATOR_CR_FILE)
+
+debug-stop:
+	kubectl delete -f $(OPERATOR_CR_FILE) || true
+	kubectl delete deployments,service -l control-plane=controller-manager
+	kubectl delete role,rolebinding --all
+	make uninstall
+
+debug-edit:
+	kubectl edit undermoon/example-undermoon
+
+run-busybox:
+	kubectl run -i --tty --rm debug-busybox --image=busybox --restart=Never -- sh
+
+run-jq-curl:
+	kubectl run -i --tty --rm debug-jq-curl --image=dwdraju/alpine-curl-jq --restart=Never -- sh
+
+run-redis-cli:
+	kubectl run -i --tty --rm debug-redis-cli --image=redis --restart=Never -- bash
+
+e2e-test:
+	kubectl create namespace e2etest || true
+	operator-sdk test local --debug --operator-namespace e2etest ./test/e2e --go-test-flags "-v"
+
+cleanup-e2e-test:
+	kubectl delete namespace e2etest || true
+
+docker-build-checker-image:
+	docker image build -f chaostest/Dockerfile -t undermoon_checker .
+	docker tag undermoon_checker localhost:5000/undermoon_checker
+	docker push localhost:5000/undermoon_checker
+
+install-undermoon-checker:
+	helm package chaostest/undermoon-checker
+	helm install example-checker "undermoon-checker-$(CHECKER_HELM_VERSION).tgz"
+
+install-undermoon-chaos-checker:
+	helm package chaostest/undermoon-checker
+	helm install --set chaos=true example-checker "undermoon-checker-$(CHECKER_HELM_VERSION).tgz"
+
+uninstall-undermoon-checker:
+	helm uninstall example-checker
+
+checker-logs:
+	./scripts/checker_logs.sh
+
+test-ctrl:
+	python chaostest/test_controller.py example-undermoon disable-killing
+
+test-chaos-ctrl:
+	python chaostest/test_controller.py example-undermoon enable-killing
+
+.PHONY: build test lint update-types minikube-env debug-run debug-start debug-stop
+

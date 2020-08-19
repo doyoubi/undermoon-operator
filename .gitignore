@@ -22,3 +22,8 @@ bin
 *.swp
 *.swo
 *~
+
+# Customized
+testbin/*
+debug
+
