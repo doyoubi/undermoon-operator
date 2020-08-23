@@ -65,6 +65,7 @@ type UndermoonReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
 
+// Reconcile implements Reconciler
 func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Undermoon")
@@ -240,6 +241,7 @@ func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, re
 	return true, nil
 }
 
+// SetupWithManager setups the controller
 func (r *UndermoonReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&undermoonv1alpha1.Undermoon{}).

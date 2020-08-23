@@ -56,7 +56,7 @@ HELM_CHARTS_RBAC_FILE=helm/undermoon-operator/templates/operator-rbac.yaml
 
 HELM_CHART_OPERATOR_FILE=helm/undermoon-operator/templates/operator.yaml
 HELM_CHART_RBAC_FILE=helm/undermoon-operator/templates/operator-rbac.yaml
-HELM_CHART_CRD_FILE=helm/undermoon-operator/templates/crd.yaml
+HELM_CHART_CRD_FILE=helm/undermoon-operator/templates/undermoon.doyoubi.mydomain_undermoons.yaml
 HELM_CHART_UNDERMOON_FILE=helm/undermoon-cluster/templates/undermoon.yaml
 
 update-types:

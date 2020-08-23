@@ -1,3 +1,10 @@
+# NOTICE:
+# This kustomization is only used for local development.
+# The helm charts version will be generated directly from the bases:
+# - crd
+# - rbac
+# - manager
+
 # Adds namespace to all resources.
 namespace: default
 
@@ -14,8 +21,8 @@ namePrefix: undermoon-operator-
 
 bases:
 - ../crd
-- ../rbac
-- ../manager
+- ../rbac/overlays/test
+- ../manager/overlays/test
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
 #- ../webhook
