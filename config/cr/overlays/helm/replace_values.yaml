@@ -1,0 +1,42 @@
+- op: replace
+  path: /metadata/name
+  value: '{{ include "undermoon-cluster.fullname" . }}'
+- op: replace
+  path: /spec/clusterName
+  value: "{{ .Values.cluster.clusterName }}"
+- op: replace
+  path: /spec/chunkNumber
+  value: "{{ .Values.cluster.chunkNumber }}"
+- op: replace
+  path: /spec/maxMemory
+  value: "{{ .Values.cluster.maxMemory }}"
+- op: replace
+  path: /spec/port
+  value: "{{ .Values.cluster.port }}"
+- op: replace
+  path: /spec/activeRedirection
+  value: "{{ .Values.cluster.activeRedirection }}"
+- op: replace
+  path: /spec/proxyThreads
+  value: "{{ .Values.cluster.proxyThreads }}"
+- op: replace
+  path: /spec/undermoonImage
+  value: "{{ .Values.image.undermoonImage }}"
+- op: replace
+  path: /spec/undermoonImagePullPolicy
+  value:"{{ .Values.image.undermoonImagePullPolicy }}"
+- op: replace
+  path: /spec/redisImage
+  value: "{{ .Values.image.redisImage }}"
+- op: replace
+  path: /spec/brokerResources
+  value: "{{- toYaml .Values.resources.brokerResources | nindent 4 }}"
+- op: replace
+  path: /spec/coordinatorResources
+  value: "{{- toYaml .Values.resources.coordinatorResources | nindent 4 }}"
+- op: replace
+  path: /spec/proxyResources
+  value: "{{- toYaml .Values.resources.proxyResources | nindent 4 }}"
+- op: replace
+  path: /spec/redisResources
+  value: "{{- toYaml .Values.resources.redisResources | nindent 4 }}"
