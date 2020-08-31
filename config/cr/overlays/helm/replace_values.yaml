@@ -1,3 +1,4 @@
+# `make update-types` will strip the '"' to support non-string type.
 - op: replace
   path: /metadata/name
   value: '{{ include "undermoon-cluster.fullname" . }}'
@@ -21,13 +22,13 @@
   value: "{{ .Values.cluster.proxyThreads }}"
 - op: replace
   path: /spec/undermoonImage
-  value: "{{ .Values.image.undermoonImage }}"
+  value: "{{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}"
 - op: replace
   path: /spec/undermoonImagePullPolicy
-  value:"{{ .Values.image.undermoonImagePullPolicy }}"
+  value: "{{ .Values.image.undermoonImagePullPolicy }}"
 - op: replace
   path: /spec/redisImage
-  value: "{{ .Values.image.redisImage }}"
+  value: "{{ .Values.image.redisImage }}:{{ .Values.image.redisImageTag }}"
 - op: replace
   path: /spec/brokerResources
   value: "{{- toYaml .Values.resources.brokerResources | nindent 4 }}"

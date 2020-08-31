@@ -63,7 +63,7 @@ type UndermoonReconciler struct {
 // +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
+// +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 
 // Reconcile implements Reconciler
 func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
@@ -247,7 +247,6 @@ func (r *UndermoonReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&undermoonv1alpha1.Undermoon{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
-		Owns(&corev1.Pod{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 1,
 		}).

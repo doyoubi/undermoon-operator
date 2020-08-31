@@ -1,0 +1,13 @@
+# Default values for undermoon-checker.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  checkerImage: localhost:5000/undermoon_checker
+  checkerImagePullPolicy: Always
+
+chaos: false
+undermoonServiceAddress: example-undermoon:5299
+
+nameOverride: ""
+fullnameOverride: ""

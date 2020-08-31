@@ -1,10 +1,12 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-  name: system
----
+# We don't need to create namespace.
+#
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   labels:
+#     control-plane: controller-manager
+#   name: system
+# ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

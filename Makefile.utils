@@ -14,22 +14,24 @@ build: build-image build-helm
 	echo "build done"
 
 build-image:
-	echo "building undermoon-operator:$(OPERATOR_VERSION)"
-	make docker-build
-	make docker-push
+	echo "building $(IMG)"
+	$(MAKE) docker-build
+	$(MAKE) docker-push
 
 build-helm:
+	$(MAKE) update-types
 	helm package helm/undermoon-operator
 	helm package helm/undermoon-cluster
 
 install-helm-package:
-	helm package helm/undermoon-operator
-	helm package helm/undermoon-cluster
+	$(MAKE) build-helm
 	helm install \
-		--set "image.operatorImage=$(IMG_NAME):$(OPERATOR_VERSION)" \
+		--set "image.operatorImage=$(IMG_NAME)" \
+		--set "image.operatorImageTag=$(OPERATOR_VERSION)" \
 		example-operator "undermoon-operator-$(OPERATOR_HELM_VERSION).tgz"
 	helm install \
-		--set "image.undermoonImage=localhost:5000/undermoon_test" \
+		--set "image.undermoonImage=$(UNDERMOON_IMG_NAME)" \
+		--set "image.undermoonImageTag=$(UNDERMOON_IMG_VERSION)" \
 		example-undermoon "undermoon-cluster-$(OPERATOR_HELM_VERSION).tgz"
 
 uninstall-helm-package:
@@ -37,9 +39,10 @@ uninstall-helm-package:
 	helm uninstall example-operator || true
 
 lint:
-	go fmt $(shell go list ./...)
-	golint ./pkg/controller...
-	golint ./test/e2e...
+	$(MAKE) fmt
+	$(MAKE) vet
+	golint ./controllers...
+	golint ./api/v1alpha1...
 	# Helm Charts development:
 	helm lint helm/undermoon-operator --strict
 	helm lint helm/undermoon-cluster --strict
@@ -50,7 +53,6 @@ lint-chaostest-script:
 	black chaostest
 	pylint --errors-only chaostest
 
-OPERATOR_CR_FILE=config/samples/undermoon_v1alpha1_undermoon.yaml
 HELM_CHARTS_CRD_FILE=helm/undermoon-operator/templates/undermoon.operator.api_undermoons_crd.yaml
 HELM_CHARTS_RBAC_FILE=helm/undermoon-operator/templates/operator-rbac.yaml
 
@@ -59,22 +61,15 @@ HELM_CHART_RBAC_FILE=helm/undermoon-operator/templates/operator-rbac.yaml
 HELM_CHART_CRD_FILE=helm/undermoon-operator/templates/undermoon.doyoubi.mydomain_undermoons.yaml
 HELM_CHART_UNDERMOON_FILE=helm/undermoon-cluster/templates/undermoon.yaml
 
-update-types:
-	make generate
-	make manifests
+update-types: kustomize
+	$(MAKE) generate
+	$(MAKE) manifests
 	# Update crd file in Helm Charts
-	$(KUSTOMIZE) build config/rbac/helm > $(HELM_CHART_RBAC_FILE)
+	$(KUSTOMIZE) build config/rbac/overlays/helm > $(HELM_CHART_RBAC_FILE)
 	$(KUSTOMIZE) build config/manager/overlays/helm > $(HELM_CHART_OPERATOR_FILE)
 	$(KUSTOMIZE) build config/crd > $(HELM_CHART_CRD_FILE)
-
-	# echo '# DO NOT MODIFY! This file is copied from $(OPERATOR_CRD_FILE)' > $(HELM_CHARTS_CRD_FILE)
-	# cat $(OPERATOR_CRD_FILE) >> $(HELM_CHARTS_CRD_FILE)
-	# echo '# DO NOT MODIFY! This file is generated from several files in deploy/' > $(HELM_CHARTS_RBAC_FILE)
-	# cat deploy/service_account.yaml >> $(HELM_CHARTS_RBAC_FILE)
-	# echo '---' >> $(HELM_CHARTS_RBAC_FILE)
-	# cat deploy/role.yaml >> $(HELM_CHARTS_RBAC_FILE)
-	# echo '---' >> $(HELM_CHARTS_RBAC_FILE)
-	# cat deploy/role_binding.yaml >> $(HELM_CHARTS_RBAC_FILE)
+	# Remove the "'" to support non-string type.
+	$(KUSTOMIZE) build config/cr/overlays/helm | sed "s/\'{{/{{/g" | sed "s/}}\'/}}/g" > $(HELM_CHART_UNDERMOON_FILE)
 
 kind-env-start:
 	# Run kind with image registry instead of:
@@ -90,28 +85,27 @@ list-images:
 	curl http://localhost:5000/v2/_catalog
 
 debug-build:
-	operator-sdk build localhost:5000/undermoon-operator:$(OPERATOR_VERSION)
-	docker push localhost:5000/undermoon-operator:$(OPERATOR_VERSION)
+	$(MAKE) docker-build UM_OP_DEBUG=1
+	$(MAKE) docker-push UM_OP_DEBUG=1
 
 debug-run:
-	make install
-	cd config/default/ && kustomize edit set namespace "default" && cd ../..
-	make deploy
+	$(MAKE) install UM_OP_DEBUG=1
+	$(MAKE) deploy UM_OP_DEBUG=1
 
 debug-logs:
 	./scripts/operator_logs.sh
 
 debug-start:
-	kubectl apply -f $(OPERATOR_CR_FILE)
+	$(KUSTOMIZE) build config/cr/overlays/test | kubectl apply -f -
 
 debug-stop:
-	kubectl delete -f $(OPERATOR_CR_FILE) || true
-	kubectl delete deployments,service -l control-plane=controller-manager
-	kubectl delete role,rolebinding --all
-	make uninstall
+	kubectl delete undermoon --all || true
+	kubectl delete deployments,service -l control-plane=controller-manager || true
+	kubectl delete role,rolebinding --all || true
+	$(MAKE) uninstall
 
 debug-edit:
-	kubectl edit undermoon/example-undermoon
+	kubectl edit undermoon/undermoon-sample
 
 run-busybox:
 	kubectl run -i --tty --rm debug-busybox --image=busybox --restart=Never -- sh
@@ -122,12 +116,13 @@ run-jq-curl:
 run-redis-cli:
 	kubectl run -i --tty --rm debug-redis-cli --image=redis --restart=Never -- bash
 
-e2e-test:
-	kubectl create namespace e2etest || true
-	operator-sdk test local --debug --operator-namespace e2etest ./test/e2e --go-test-flags "-v"
+# TODO: Need to upgrade.
+# e2e-test:
+# 	kubectl create namespace e2etest || true
+# 	operator-sdk test local --debug --operator-namespace e2etest ./test/e2e --go-test-flags "-v"
 
-cleanup-e2e-test:
-	kubectl delete namespace e2etest || true
+# cleanup-e2e-test:
+# 	kubectl delete namespace e2etest || true
 
 docker-build-checker-image:
 	docker image build -f chaostest/Dockerfile -t undermoon_checker .

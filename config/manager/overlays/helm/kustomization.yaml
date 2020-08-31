@@ -2,12 +2,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- ../../bases/manager.yaml
+- ../../bases
 
 images:
 - name: controller
   newName: "{{ .Values.image.operatorImage }}"
-  newTag: "{{ .Values.image.operatorImagePullPolicy }}"
+  newTag: "{{ .Values.image.operatorImageTag }}"
 
 namespace: "{{ .Release.Namespace }}"
 
@@ -16,4 +16,6 @@ patchesJson6902:
     group: apps
     version: v1
     kind: Deployment
-  patch: replace_values.yaml
+    name: controller-manager
+    namespace: system  # Need namespace here: https://github.com/kubernetes-sigs/kustomize/issues/1332#issuecomment-511180301
+  path: replace_values.yaml

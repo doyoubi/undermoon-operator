@@ -1,22 +1,19 @@
-apiVersion: undermoon.operator.api/v1alpha1
+apiVersion: undermoon.doyoubi.mydomain/v1alpha1
 kind: Undermoon
 metadata:
   name: {{ include "undermoon-cluster.fullname" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
-  clusterName: "{{ .Values.cluster.clusterName }}"
+  activeRedirection: {{ .Values.cluster.activeRedirection }}
+  brokerResources: {{- toYaml .Values.resources.brokerResources | nindent 4 }}
   chunkNumber: {{ .Values.cluster.chunkNumber }}
+  clusterName: {{ .Values.cluster.clusterName }}
+  coordinatorResources: {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
   maxMemory: {{ .Values.cluster.maxMemory }}
   port: {{ .Values.cluster.port }}
-  activeRedirection: {{ .Values.cluster.activeRedirection }}
+  proxyResources: {{- toYaml .Values.resources.proxyResources | nindent 4 }}
   proxyThreads: {{ .Values.cluster.proxyThreads }}
-  undermoonImage: "{{ .Values.image.undermoonImage }}"
-  undermoonImagePullPolicy: "{{ .Values.image.undermoonImagePullPolicy }}"
-  redisImage: "{{ .Values.image.redisImage }}"
-  brokerResources:
-    {{- toYaml .Values.resources.brokerResources | nindent 4 }}
-  coordinatorResources:
-    {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
-  proxyResources:
-    {{- toYaml .Values.resources.proxyResources | nindent 4 }}
-  redisResources:
-    {{- toYaml .Values.resources.redisResources | nindent 4 }}
+  redisImage: {{ .Values.image.redisImage }}:{{ .Values.image.redisImageTag }}
+  redisResources: {{- toYaml .Values.resources.redisResources | nindent 4 }}
+  undermoonImage: {{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}
+  undermoonImagePullPolicy: {{ .Values.image.undermoonImagePullPolicy }}

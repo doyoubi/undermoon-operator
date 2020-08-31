@@ -4,10 +4,13 @@ kind: Kustomization
 resources:
   - ../../bases
 
+namePrefix: undermoon-operator-
+namespace: "{{ .Release.Namespace }}"
+
 patchesJson6902:
 - target:
     group: undermoon.doyoubi.mydomain
     version: v1alpha1
     kind: Undermoon
     name: undermoon-sample
-  path: replace_value.yaml
+  path: replace_values.yaml

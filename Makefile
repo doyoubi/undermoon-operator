@@ -11,15 +11,23 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-UM_OP_DEBUG = $(shell test -f "debug" && echo 1 || echo 0)
+DEBUG_IMG_NAME ?= localhost:5000/undermoon-operator
+DEBUG_UNDERMOON_IMG_NAME ?= localhost:5000/undermoon_test
+
+UM_OP_DEBUG ?= $(shell test -f "debug" && echo 1 || echo 0)
 ifeq ($(UM_OP_DEBUG),1)
-IMG_NAME ?= localhost:5000/undermoon-operator
+IMG_NAME ?= $(DEBUG_IMG_NAME)
+UNDERMOON_IMG_NAME ?= $(DEBUG_UNDERMOON_IMG_NAME)
+UNDERMOON_IMG_VERSION ?= latest
 else
 IMG_NAME ?= undermoon-operator
+UNDERMOON_IMG_NAME ?= undermoon
+UNDERMOON_IMG_VERSION ?= 0.3.1
 endif
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMG_NAME):$(VERSION)
+UNDERMOON_IMG ?= $(UNDERMOON_IMG_NAME):$(UNDERMOON_IMG_VERSION)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -57,7 +65,6 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
@@ -78,8 +85,9 @@ vet:
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+# TODO: add test when it's done.
 # Build the docker image
-docker-build: test
+docker-build: # test
 	docker build . -t ${IMG}
 
 # Push the docker image
@@ -103,6 +111,9 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+# Need new version (higher than 3.6.0) of kustomize
+# to fix the breaking long line problem.
+# https://github.com/kubernetes-sigs/kustomize/issues/947
 kustomize:
 ifeq (, $(shell which kustomize))
 	@{ \
@@ -110,7 +121,7 @@ ifeq (, $(shell which kustomize))
 	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	go get sigs.k8s.io/kustomize/kustomize/v3@v3.8.2 ;\
 	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
 	}
 KUSTOMIZE=$(GOBIN)/kustomize

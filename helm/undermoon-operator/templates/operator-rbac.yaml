@@ -1,40 +1,46 @@
-# DO NOT MODIFY! This file is generated from several files in deploy/
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: undermoon-operator
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  creationTimestamp: null
-  name: undermoon-operator
+  name: undermoon-operator-leader-election-role
+  namespace: '{{ .Release.Namespace }}'
 rules:
 - apiGroups:
   - ""
   resources:
-  - pods
-  - services
-  - services/finalizers
-  - endpoints
-  - persistentvolumeclaims
-  - events
   - configmaps
-  - secrets
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: undermoon-operator-manager-role
+rules:
 - apiGroups:
   - apps
   resources:
-  - deployments
-  - daemonsets
-  - replicasets
   - statefulsets
   verbs:
   - create
@@ -45,37 +51,17 @@ rules:
   - update
   - watch
 - apiGroups:
-  - monitoring.coreos.com
+  - ""
   resources:
-  - servicemonitors
+  - endpoints
   verbs:
   - get
-  - create
-- apiGroups:
-  - apps
-  resourceNames:
-  - undermoon-operator
-  resources:
-  - deployments/finalizers
-  verbs:
-  - update
+  - list
+  - watch
 - apiGroups:
   - ""
   resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  - deployments
-  verbs:
-  - get
-- apiGroups:
-  - undermoon.operator.api
-  resources:
-  - '*'
+  - services
   verbs:
   - create
   - delete
@@ -84,15 +70,50 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - undermoon.doyoubi.mydomain
+  resources:
+  - undermoons
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - undermoon.doyoubi.mydomain
+  resources:
+  - undermoons/status
+  verbs:
+  - get
+  - patch
+  - update
 ---
-kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
 metadata:
-  name: undermoon-operator
+  name: undermoon-operator-leader-election-rolebinding
+  namespace: '{{ .Release.Namespace }}'
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: undermoon-operator-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: undermoon-operator
+  name: default
+  namespace: '{{ .Release.Namespace }}'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: undermoon-operator-manager-rolebinding
 roleRef:
-  kind: Role
-  name: undermoon-operator
   apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: undermoon-operator-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: '{{ .Release.Namespace }}'
