@@ -1,7 +1,7 @@
 apiVersion: undermoon.doyoubi.mydomain/v1alpha1
 kind: Undermoon
 metadata:
-  name: undermoon-sample
+  name: example-undermoon
 spec:
   clusterName: example-cluster
   chunkNumber: 1

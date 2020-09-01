@@ -47,7 +47,7 @@ Build from undermoon repository:
 ```
 > git clone https://github.com/doyoubi/undermoon
 > cd undermoon
-> docker-build-test-image
+> make docker-build-test-image
 > docker tag undermoon_test:latest localhost:5000/undermoon_test
 > docker push localhost:5000/undermoon_test
 ```

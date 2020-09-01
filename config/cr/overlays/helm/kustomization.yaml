@@ -12,5 +12,5 @@ patchesJson6902:
     group: undermoon.doyoubi.mydomain
     version: v1alpha1
     kind: Undermoon
-    name: undermoon-sample
+    name: example-undermoon
   path: replace_values.yaml

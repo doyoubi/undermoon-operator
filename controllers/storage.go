@@ -183,7 +183,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		},
 		Env:       env,
 		Resources: cr.Spec.ProxyResources,
-		Lifecycle: genPreStopHookLifeCycle([]string{"sleep", "10"}),
+		Lifecycle: genPreStopHookLifeCycle([]string{"sleep", "30"}),
 	}
 	redisContainer1 := genRedisContainer(1, cr.Spec.RedisImage, cr.Spec.MaxMemory, redisPort1, cr)
 	redisContainer2 := genRedisContainer(2, cr.Spec.RedisImage, cr.Spec.MaxMemory, redisPort2, cr)
@@ -267,7 +267,7 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 		},
 		Env:       []corev1.EnvVar{podIPEnv()},
 		Resources: cr.Spec.RedisResources,
-		Lifecycle: genPreStopHookLifeCycle([]string{"sleep", "10"}),
+		Lifecycle: genPreStopHookLifeCycle([]string{"sleep", "30"}),
 	}
 }
 

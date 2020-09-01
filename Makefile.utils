@@ -105,7 +105,7 @@ debug-stop:
 	$(MAKE) uninstall
 
 debug-edit:
-	kubectl edit undermoon/undermoon-sample
+	kubectl edit undermoon/example-undermoon
 
 run-busybox:
 	kubectl run -i --tty --rm debug-busybox --image=busybox --restart=Never -- sh
