@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
@@ -97,7 +98,6 @@ func (con *memBrokerController) getOrCreateBrokerStatefulSet(reqLogger logr.Logg
 			}
 			return nil, err
 		}
-
 		// Statefulset created successfully - don't requeue
 		return broker, nil
 	} else if err != nil {
@@ -223,4 +223,63 @@ func (con *memBrokerController) getCurrentMaster(reqLogger logr.Logger, brokerAd
 	}
 
 	return maxEpochBroker, nil
+}
+
+func (con *memBrokerController) triggerStatefulSetRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, brokerStatefulSet *appsv1.StatefulSet, brokerService *corev1.Service) error {
+	err := con.updateStatefulSetHelper(reqLogger, cr, brokerStatefulSet)
+	if err != nil {
+		return err
+	}
+
+	ready, err := con.brokerAllReady(brokerStatefulSet, brokerService)
+	if !ready {
+		reqLogger.Info("broker StatefulSet is not ready after rolling update. Try again.")
+		return errRetryReconciliation
+	}
+
+	return nil
+}
+
+func (con *memBrokerController) updateStatefulSetHelper(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, brokerStatefulSet *appsv1.StatefulSet) error {
+	newStatefulSet := createBrokerStatefulSet(cr)
+	brokerStatefulSet.Spec = newStatefulSet.Spec
+
+	if len(brokerStatefulSet.ObjectMeta.ResourceVersion) == 0 {
+		err := pkgerrors.Errorf("Empty ResourceVersion when updating brokerStatefulset: %s", cr.ObjectMeta.Name)
+		reqLogger.Error(err, "failed to update broker statefulset. Empty ResourceVersion.", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+
+	err := con.r.client.Update(context.TODO(), brokerStatefulSet)
+	if err != nil {
+		if errors.IsConflict(err) {
+			reqLogger.Info("Conflict on updating broker StatefulSet. Try again.")
+			return errRetryReconciliation
+		}
+		reqLogger.Error(err, "failed to update broker statefulset", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+	reqLogger.Info("Successfully update broker StatefulSet")
+
+	return nil
+}
+
+func (con *memBrokerController) needRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, brokerStatefulSet *appsv1.StatefulSet) (bool, error) {
+	newStatefulSet := createBrokerStatefulSet(cr)
+	newSpec, err := newStatefulSet.Spec.Marshal()
+	if err != nil {
+		reqLogger.Error(err, "Failed to marshal new broker StatefulSet Spec",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return false, err
+	}
+
+	oldSpec, err := brokerStatefulSet.Spec.Marshal()
+	if err != nil {
+		reqLogger.Error(err, "Failed to marshal old broker StatefulSet Spec",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return false, err
+	}
+
+	updated := !bytes.Equal(newSpec, oldSpec)
+	return updated, nil
 }

@@ -41,7 +41,7 @@ func NewUndermoonReconciler(client client.Client, log logr.Logger, scheme *runti
 		scheme: scheme,
 	}
 	r.brokerCon = newBrokerController(r)
-	r.coodinatorCon = newCoordinatorController(r)
+	r.coordinatorCon = newCoordinatorController(r)
 	r.storageCon = newStorageController(r)
 	r.metaCon = newMetaController()
 	return r
@@ -53,10 +53,10 @@ type UndermoonReconciler struct {
 	log    logr.Logger
 	scheme *runtime.Scheme
 
-	brokerCon     *memBrokerController
-	coodinatorCon *coordinatorController
-	storageCon    *storageController
-	metaCon       *metaController
+	brokerCon      *memBrokerController
+	coordinatorCon *coordinatorController
+	storageCon     *storageController
+	metaCon        *metaController
 }
 
 // +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons,verbs=get;list;watch;create;update;patch;delete
@@ -108,7 +108,7 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		return reconcile.Result{}, err
 	}
 
-	err = r.coodinatorCon.configSetBroker(reqLogger, instance, resource.coordinatorService, masterBrokerAddress)
+	err = r.coordinatorCon.configSetBroker(reqLogger, instance, resource.coordinatorService, masterBrokerAddress)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -168,10 +168,18 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		return reconcile.Result{}, err
 	}
 
-	resource.storageStatefulSet, err = r.storageCon.scaleDownStorageStatefulSet(reqLogger, instance, resource.storageStatefulSet, info)
+	err = r.storageCon.scaleDownStorageStatefulSet(reqLogger, instance, resource.storageStatefulSet, info)
 	if err != nil {
 		if err == errRetryReconciliation {
 			return reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}, nil
+		}
+		return reconcile.Result{}, err
+	}
+
+	err = r.triggerRollingUpdate(resource, reqLogger, instance)
+	if err != nil {
+		if err == errRetryReconciliation {
+			return reconcile.Result{Requeue: true, RequeueAfter: 5 * time.Second}, nil
 		}
 		return reconcile.Result{}, err
 	}
@@ -195,7 +203,7 @@ func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *u
 		return nil, err
 	}
 
-	coordinatorStatefulSet, coordinatorService, err := r.coodinatorCon.createCoordinator(reqLogger, instance)
+	coordinatorStatefulSet, coordinatorService, err := r.coordinatorCon.createCoordinator(reqLogger, instance)
 	if err != nil {
 		reqLogger.Error(err, "failed to create coordinator", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
 		return nil, err
@@ -228,7 +236,7 @@ func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, re
 		return false, nil
 	}
 
-	ready, err = r.coodinatorCon.coordinatorReady(resource.coordinatorStatefulSet, resource.coordinatorService)
+	ready, err = r.coordinatorCon.coordinatorReady(resource.coordinatorStatefulSet, resource.coordinatorService)
 	if err != nil {
 		reqLogger.Error(err, "failed to check coordinator ready", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
 		return false, err
@@ -239,6 +247,38 @@ func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, re
 	}
 
 	return true, nil
+}
+
+func (r *UndermoonReconciler) triggerRollingUpdate(resource *umResource, reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) error {
+	need, err := r.brokerCon.needRollingUpdate(reqLogger, instance, resource.brokerStatefulSet)
+	if !need {
+		reqLogger.Info("broker does not need to trigger rolling update")
+		return nil
+	}
+
+	err = r.brokerCon.triggerStatefulSetRollingUpdate(reqLogger, instance, resource.brokerStatefulSet, resource.brokerService)
+	if err != nil {
+		return err
+	}
+
+	need, err = r.coordinatorCon.needRollingUpdate(reqLogger, instance, resource.coordinatorStatefulSet)
+	if !need {
+		reqLogger.Info("coordinator does not need to trigger rolling update")
+		return nil
+	}
+
+	err = r.coordinatorCon.triggerStatefulSetRollingUpdate(reqLogger, instance, resource.coordinatorStatefulSet, resource.coordinatorService)
+	if err != nil {
+		return err
+	}
+
+	need, err = r.storageCon.needRollingUpdate(reqLogger, instance, resource.storageStatefulSet)
+	if !need {
+		reqLogger.Info("storage does not need to trigger rolling update")
+		return nil
+	}
+
+	return r.storageCon.triggerStatefulSetRollingUpdate(reqLogger, instance, resource.storageStatefulSet, resource.storageService)
 }
 
 // SetupWithManager setups the controller

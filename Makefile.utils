@@ -28,6 +28,7 @@ install-helm-package:
 	helm install \
 		--set "image.operatorImage=$(IMG_NAME)" \
 		--set "image.operatorImageTag=$(OPERATOR_VERSION)" \
+		--set "image.operatorImagePullPolicy=Always" \
 		example-operator "undermoon-operator-$(OPERATOR_HELM_VERSION).tgz"
 	helm install \
 		--set "image.undermoonImage=$(UNDERMOON_IMG_NAME)" \

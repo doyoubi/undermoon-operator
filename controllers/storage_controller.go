@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"strconv"
 	"strings"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	pkgerrors "github.com/pkg/errors"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -48,7 +51,7 @@ func (con *storageController) createStorage(reqLogger logr.Logger, cr *undermoon
 
 	// Only update replica number here for scaling out.
 	if int32(cr.Spec.ChunkNumber)*2 > *storage.Spec.Replicas {
-		storage, err = con.updateStorageStatefulSet(reqLogger, cr, storage)
+		err = con.updateStorageStatefulSet(reqLogger, cr, storage)
 		if err != nil {
 			if err != errRetryReconciliation {
 				reqLogger.Error(err, "failed to update storage StatefulSet", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
@@ -125,40 +128,46 @@ func (con *storageController) getOrCreateStorageStatefulSet(reqLogger logr.Logge
 	return found, nil
 }
 
-func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet, info *clusterInfo) (*appsv1.StatefulSet, error) {
+func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet, info *clusterInfo) error {
 	expectedNodeNumber := int(cr.Spec.ChunkNumber) * chunkNodeNumber
 	if info.NodeNumberWithSlots > expectedNodeNumber {
 		reqLogger.Info("Need to wait for slot migration to scale down storage", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return storage, errRetryReconciliation
+		return errRetryReconciliation
 	}
 
 	if info.NodeNumberWithSlots < expectedNodeNumber {
 		reqLogger.Info("Need to scale up", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return storage, errRetryReconciliation
+		return errRetryReconciliation
 	}
 
-	storage, err := con.updateStorageStatefulSet(reqLogger, cr, storage)
+	err := con.updateStorageStatefulSet(reqLogger, cr, storage)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return storage, nil
+	return nil
 }
 
-func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
+func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet) error {
 	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
 	storage.Spec.Replicas = &replicaNum
+
+	if len(storage.ObjectMeta.ResourceVersion) == 0 {
+		err := pkgerrors.Errorf("Empty ResourceVersion when updating storage statefulset replicas: %s", cr.ObjectMeta.Name)
+		reqLogger.Error(err, "failed to update storage statefulset. Empty ResourceVersion.", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
 
 	err := con.r.client.Update(context.TODO(), storage)
 	if err != nil {
 		if errors.IsConflict(err) {
-			reqLogger.Info("Conflict on updating storage StatefulSet. Try again.")
-			return nil, errRetryReconciliation
+			reqLogger.Info("Conflict on updating storage StatefulSet Replicas. Try again.")
+			return errRetryReconciliation
 		}
 		reqLogger.Error(err, "failed to update storage StatefulSet", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return nil, err
+		return err
 	}
 
-	return storage, nil
+	return nil
 }
 
 func (con *storageController) getServiceEndpointsNum(storageService *corev1.Service) (int, error) {
@@ -262,4 +271,65 @@ func (con *storageController) getMaxEpoch(reqLogger logr.Logger, storageService 
 	}
 
 	return maxEpoch, nil
+}
+
+func (con *storageController) triggerStatefulSetRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storageStatefulSet *appsv1.StatefulSet, storageService *corev1.Service) error {
+	err := con.updateStatefulSetHelper(reqLogger, cr, storageStatefulSet)
+	if err != nil {
+		return err
+	}
+
+	ready, err := con.storageAllReady(storageService, cr)
+	if !ready {
+		reqLogger.Info("storage StatefulSet is not ready after rolling update. Try again.")
+		return errRetryReconciliation
+	}
+
+	return nil
+}
+
+func (con *storageController) updateStatefulSetHelper(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storageStatefulSet *appsv1.StatefulSet) error {
+	newStatefulSet := createStorageStatefulSet(cr)
+	storageStatefulSet.Spec = newStatefulSet.Spec
+
+	if len(storageStatefulSet.ObjectMeta.ResourceVersion) == 0 {
+		err := pkgerrors.Errorf("Empty ResourceVersion when updating statefulsetStatefulSet: %s", cr.ObjectMeta.Name)
+		reqLogger.Error(err, "failed to update storage statefulset. Empty ResourceVersion.",
+			"Name", cr.ObjectMeta.Name,
+			"ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+
+	err := con.r.client.Update(context.TODO(), storageStatefulSet)
+	if err != nil {
+		if errors.IsConflict(err) {
+			reqLogger.Info("Conflict on updating storage StatefulSet. Try again.")
+			return errRetryReconciliation
+		}
+		reqLogger.Error(err, "failed to update storage statefulset", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+	reqLogger.Info("Successfully update storage StatefulSet")
+
+	return nil
+}
+
+func (con *storageController) needRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storageStatefulSet *appsv1.StatefulSet) (bool, error) {
+	newStatefulSet := createStorageStatefulSet(cr)
+	newSpec, err := newStatefulSet.Spec.Marshal()
+	if err != nil {
+		reqLogger.Error(err, "Failed to marshal new storage StatefulSet Spec",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return false, err
+	}
+
+	oldSpec, err := storageStatefulSet.Spec.Marshal()
+	if err != nil {
+		reqLogger.Error(err, "Failed to marshal old storage StatefulSet Spec",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return false, err
+	}
+
+	updated := !bytes.Equal(newSpec, oldSpec)
+	return updated, nil
 }
