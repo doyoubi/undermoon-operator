@@ -170,6 +170,10 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 			Name:  "UNDERMOON_DEFAULT_REDIRECTION_ADDRESS",
 			Value: firstProxyAddress,
 		},
+		{
+			Name:  "UNDERMOON_THREAD_NUMBER",
+			Value: strconv.FormatUint(uint64(cr.Spec.ProxyThreads), 10),
+		},
 	}
 
 	fqdn := genStorageFQDNFromName(podNameStr, cr)
