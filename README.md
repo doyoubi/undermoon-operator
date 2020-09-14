@@ -39,7 +39,7 @@ Fields here:
     One chunk always consists of 2 masters and 2 replicas.
     Modify this to scale the cluster.
 - `maxMemory`: Specifies the `maxmemory` config for each Redis node in MBs.
-    This can't be modifed.
+    Modify this will trigger rolling upgrade.
 - `port`: The service port your redis clients connect to.
     This can't be modifed.
 
