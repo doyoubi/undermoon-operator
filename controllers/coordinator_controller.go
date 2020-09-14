@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
@@ -163,6 +162,11 @@ func (con *coordinatorController) triggerStatefulSetRollingUpdate(reqLogger logr
 	}
 
 	ready, err := con.coordiantorAllReady(coordinatorStatefulSet, coordinatorService)
+	if err != nil {
+		reqLogger.Error(err, "Failed to check coordinator readiness",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
 	if !ready {
 		reqLogger.Info("coordinator StatefulSet is not ready after rolling update. Try again.")
 		return errRetryReconciliation
@@ -199,22 +203,6 @@ func (con *coordinatorController) updateStatefulSetHelper(reqLogger logr.Logger,
 	return nil
 }
 
-func (con *coordinatorController) needRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, coordinatorStatefulSet *appsv1.StatefulSet) (bool, error) {
-	newStatefulSet := createCoordinatorStatefulSet(cr)
-	newSpec, err := newStatefulSet.Spec.Marshal()
-	if err != nil {
-		reqLogger.Error(err, "Failed to marshal new coordinator StatefulSet Spec",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return false, err
-	}
-
-	oldSpec, err := coordinatorStatefulSet.Spec.Marshal()
-	if err != nil {
-		reqLogger.Error(err, "Failed to marshal old coordinator StatefulSet Spec",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return false, err
-	}
-
-	updated := !bytes.Equal(newSpec, oldSpec)
-	return updated, nil
+func (con *coordinatorController) needRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, coordinatorStatefulSet *appsv1.StatefulSet) bool {
+	return coordinatorStatefulSetChanged(reqLogger, cr, coordinatorStatefulSet)
 }

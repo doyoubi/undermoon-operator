@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"strconv"
 	"strings"
@@ -280,6 +279,11 @@ func (con *storageController) triggerStatefulSetRollingUpdate(reqLogger logr.Log
 	}
 
 	ready, err := con.storageAllReady(storageService, cr)
+	if err != nil {
+		reqLogger.Error(err, "Failed to check storage readiness",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
 	if !ready {
 		reqLogger.Info("storage StatefulSet is not ready after rolling update. Try again.")
 		return errRetryReconciliation
@@ -314,22 +318,6 @@ func (con *storageController) updateStatefulSetHelper(reqLogger logr.Logger, cr 
 	return nil
 }
 
-func (con *storageController) needRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storageStatefulSet *appsv1.StatefulSet) (bool, error) {
-	newStatefulSet := createStorageStatefulSet(cr)
-	newSpec, err := newStatefulSet.Spec.Marshal()
-	if err != nil {
-		reqLogger.Error(err, "Failed to marshal new storage StatefulSet Spec",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return false, err
-	}
-
-	oldSpec, err := storageStatefulSet.Spec.Marshal()
-	if err != nil {
-		reqLogger.Error(err, "Failed to marshal old storage StatefulSet Spec",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return false, err
-	}
-
-	updated := !bytes.Equal(newSpec, oldSpec)
-	return updated, nil
+func (con *storageController) needRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storageStatefulSet *appsv1.StatefulSet) bool {
+	return storageStatefulSetChanged(reqLogger, cr, storageStatefulSet)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,6 +125,37 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 		},
 	}
+}
+
+func coordinatorStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, curr *appsv1.StatefulSet) bool {
+	container := curr.Spec.Template.Spec.Containers[0]
+
+	if cr.Spec.UndermoonImage != container.Image {
+		reqLogger.Info("Coordinator image is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImage", container.Image, "NewImage", cr.Spec.UndermoonImage,
+		)
+		return true
+	}
+
+	if cr.Spec.UndermoonImagePullPolicy != container.ImagePullPolicy {
+		reqLogger.Info("Coordinator image pull policy is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImagePullPolicy", container.ImagePullPolicy,
+			"NewImagePullPolicy", cr.Spec.UndermoonImagePullPolicy,
+		)
+		return true
+	}
+
+	if !resourceRequirementsEqual(cr.Spec.CoordinatorResources, container.Resources) {
+		reqLogger.Info("Coordinator resource is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldResource", container.Resources, "NewResource", cr.Spec.CoordinatorResources,
+		)
+		return true
+	}
+
+	return false
 }
 
 // CoordinatorStatefulSetName defines the statefulset for coordinator.

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,7 +15,10 @@ import (
 const DefaultServerProxyPort = 5299
 const redisPort1 = 7001
 const redisPort2 = 7002
+const redisMaxmemoryPodEnvName = "REDIS_MAX_MEMORY"
 const serverProxyContainerName = "server-proxy"
+const serverProxyActiveRedirectionEnvName = "UNDERMOON_ACTIVE_REDIRECTION"
+const serverProxyThreadNumberEnvName = "UNDERMOON_THREAD_NUMBER"
 const redisContainerName = "redis"
 const undermoonServiceTypeStorage = "storage"
 const storageTopologyKey = "undermoon-storage-topology-key"
@@ -163,7 +167,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 			Value: "400000",
 		},
 		{
-			Name:  "UNDERMOON_ACTIVE_REDIRECTION",
+			Name:  serverProxyActiveRedirectionEnvName,
 			Value: strconv.FormatBool(cr.Spec.ActiveRedirection),
 		},
 		{
@@ -171,7 +175,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 			Value: firstProxyAddress,
 		},
 		{
-			Name:  "UNDERMOON_THREAD_NUMBER",
+			Name:  serverProxyThreadNumberEnvName,
 			Value: strconv.FormatUint(uint64(cr.Spec.ProxyThreads), 10),
 		},
 	}
@@ -200,6 +204,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
+				// `storageStatefulSetChanged` depends on this order.
 				serverProxyContainer,
 				redisContainer1,
 				redisContainer2,
@@ -239,7 +244,7 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 		Command:         []string{"redis-server"},
 		Args: []string{
 			"--maxmemory",
-			fmt.Sprintf("%dMB", maxMemory),
+			fmt.Sprintf("$(%s)MB", redisMaxmemoryPodEnvName),
 			"--port",
 			portStr,
 			"--slave-announce-port",
@@ -255,7 +260,13 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 			"localhost",
 			"0", // Use zero port here.
 		},
-		Env:            []corev1.EnvVar{podIPEnv()},
+		Env: []corev1.EnvVar{
+			podIPEnv(),
+			{
+				Name:  redisMaxmemoryPodEnvName,
+				Value: fmt.Sprintf("%d", maxMemory),
+			},
+		},
 		Resources:      cr.Spec.RedisResources,
 		Lifecycle:      genPreStopHookLifeCycle([]string{"sleep", "30"}),
 		ReadinessProbe: genRedisReadinessProbe(port, redisReplicationOffsetThreshold),
@@ -369,6 +380,96 @@ func genServerProxyReadinessProbe(serverProxyPort uint32) *corev1.Probe {
 		SuccessThreshold: 1,
 		FailureThreshold: 1,
 	}
+}
+
+func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, curr *appsv1.StatefulSet) bool {
+	serverProxyContainer := curr.Spec.Template.Spec.Containers[0]
+	redis1Container := curr.Spec.Template.Spec.Containers[1]
+	redis2Container := curr.Spec.Template.Spec.Containers[2]
+
+	if cr.Spec.UndermoonImage != serverProxyContainer.Image {
+		reqLogger.Info("Proxy image is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImage", serverProxyContainer.Image, "NewImage", cr.Spec.UndermoonImage,
+		)
+		return true
+	}
+
+	if cr.Spec.UndermoonImagePullPolicy != serverProxyContainer.ImagePullPolicy {
+		reqLogger.Info("Proxy image pull policy is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImagePullPolicy", serverProxyContainer.ImagePullPolicy,
+			"NewImagePullPolicy", cr.Spec.UndermoonImagePullPolicy,
+		)
+		return true
+	}
+
+	if cr.Spec.RedisImage != redis1Container.Image || cr.Spec.RedisImage != redis2Container.Image {
+		reqLogger.Info("Redis image is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImage1", redis1Container.Image,
+			"OldImage2", redis2Container.Image,
+			"NewImage", cr.Spec.UndermoonImage,
+		)
+		return true
+	}
+
+	if !resourceRequirementsEqual(cr.Spec.ProxyResources, serverProxyContainer.Resources) {
+		reqLogger.Info("Proxy resource is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldResource", serverProxyContainer.Resources, "NewResource", cr.Spec.CoordinatorResources,
+		)
+		return true
+	}
+
+	redis1ResourceChanged := !resourceRequirementsEqual(cr.Spec.RedisResources, redis1Container.Resources)
+	redis2ResourceChanged := !resourceRequirementsEqual(cr.Spec.RedisResources, redis2Container.Resources)
+	if redis1ResourceChanged || redis2ResourceChanged {
+		reqLogger.Info("Redis resource is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldResource1", redis1Container.Resources,
+			"OldResource2", redis2Container.Resources,
+			"NewResource", cr.Spec.CoordinatorResources,
+		)
+		return true
+	}
+
+	// The change of `chunkNumber` will be handled in the scaling part.
+
+	redis1Maxmemory := getEnvValue(redis1Container.Env, redisMaxmemoryPodEnvName)
+	redis2Maxmemory := getEnvValue(redis2Container.Env, redisMaxmemoryPodEnvName)
+	specMaxmeory := fmt.Sprintf("%d", cr.Spec.MaxMemory)
+	if specMaxmeory != redis1Maxmemory || specMaxmeory != redis2Maxmemory {
+		reqLogger.Info("Redis maxmemory is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldMaxmemory1", redis1Maxmemory,
+			"OldMaxmemory2", redis2Maxmemory,
+			"NewMaxmemory", specMaxmeory,
+		)
+		return true
+	}
+
+	activeRedirection := getEnvValue(serverProxyContainer.Env, serverProxyActiveRedirectionEnvName)
+	if strconv.FormatBool(cr.Spec.ActiveRedirection) != activeRedirection {
+		reqLogger.Info("Proxy ActiveRedirection is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldActiveRedirection", activeRedirection,
+			"NewActiveRedirection", cr.Spec.ActiveRedirection,
+		)
+		return true
+	}
+
+	threadNumber := getEnvValue(serverProxyContainer.Env, serverProxyThreadNumberEnvName)
+	if strconv.FormatUint(uint64(cr.Spec.ProxyThreads), 10) != threadNumber {
+		reqLogger.Info("Proxy thread number is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldThreadNumber", threadNumber,
+			"NewThreadNumber", cr.Spec.ProxyThreads,
+		)
+		return true
+	}
+
+	return false
 }
 
 // StorageStatefulSetName defines the StatefulSet for server proxy.

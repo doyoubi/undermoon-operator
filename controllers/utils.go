@@ -96,6 +96,15 @@ func podNameEnv() corev1.EnvVar {
 	}
 }
 
+func getEnvValue(envs []corev1.EnvVar, name string) string {
+	for _, env := range envs {
+		if env.Name == name {
+			return env.Value
+		}
+	}
+	return ""
+}
+
 type redisClientPool struct {
 	lock    sync.Mutex
 	clients map[string]*redis.Client
@@ -148,4 +157,34 @@ func genPreStopHookLifeCycle(cmd []string) *corev1.Lifecycle {
 			Exec: &corev1.ExecAction{Command: cmd},
 		},
 	}
+}
+
+func resourceRequirementsEqual(lhs, rhs corev1.ResourceRequirements) bool {
+	if !resourceListEqual(lhs.Limits, rhs.Limits) {
+		return false
+	}
+
+	if !resourceListEqual(lhs.Requests, rhs.Requests) {
+		return false
+	}
+
+	return true
+}
+
+func resourceListEqual(lhs, rhs corev1.ResourceList) bool {
+	if len(lhs) != len(rhs) {
+		return false
+	}
+
+	for resourceName, lhsQuantity := range lhs {
+		rhsQuantity, ok := rhs[resourceName]
+		if !ok {
+			return false
+		}
+		if !lhsQuantity.Equal(rhsQuantity) {
+			return false
+		}
+	}
+
+	return true
 }

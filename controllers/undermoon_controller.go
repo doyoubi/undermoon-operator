@@ -249,36 +249,63 @@ func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, re
 	return true, nil
 }
 
-func (r *UndermoonReconciler) triggerRollingUpdate(resource *umResource, reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) error {
-	need, err := r.brokerCon.needRollingUpdate(reqLogger, instance, resource.brokerStatefulSet)
-	if !need {
-		reqLogger.Info("broker does not need to trigger rolling update")
-		return nil
+func (r *UndermoonReconciler) triggerRollingUpdate(resource *umResource, reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) error {
+	need := r.brokerCon.needRollingUpdate(reqLogger, cr, resource.brokerStatefulSet)
+	if need {
+		err := r.brokerCon.triggerStatefulSetRollingUpdate(reqLogger, cr, resource.brokerStatefulSet, resource.brokerService)
+		if err != nil {
+			return err
+		}
+		// Force retry at the first time to avoid updating all components at the same time.
+		return errRetryReconciliation
 	}
-
-	err = r.brokerCon.triggerStatefulSetRollingUpdate(reqLogger, instance, resource.brokerStatefulSet, resource.brokerService)
+	ready, err := r.brokerCon.brokerAllReady(resource.brokerStatefulSet, resource.brokerService)
 	if err != nil {
+		reqLogger.Error(err, "Failed to check broker readiness",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
 		return err
 	}
-
-	need, err = r.coordinatorCon.needRollingUpdate(reqLogger, instance, resource.coordinatorStatefulSet)
-	if !need {
-		reqLogger.Info("coordinator does not need to trigger rolling update")
-		return nil
+	if !ready {
+		return errRetryReconciliation
 	}
 
-	err = r.coordinatorCon.triggerStatefulSetRollingUpdate(reqLogger, instance, resource.coordinatorStatefulSet, resource.coordinatorService)
+	need = r.coordinatorCon.needRollingUpdate(reqLogger, cr, resource.coordinatorStatefulSet)
+	if need {
+		err := r.coordinatorCon.triggerStatefulSetRollingUpdate(reqLogger, cr, resource.coordinatorStatefulSet, resource.coordinatorService)
+		if err != nil {
+			return err
+		}
+		return errRetryReconciliation
+	}
+	ready, err = r.coordinatorCon.coordiantorAllReady(resource.coordinatorStatefulSet, resource.coordinatorService)
 	if err != nil {
+		reqLogger.Error(err, "Failed to check coordinator readiness",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
 		return err
 	}
-
-	need, err = r.storageCon.needRollingUpdate(reqLogger, instance, resource.storageStatefulSet)
-	if !need {
-		reqLogger.Info("storage does not need to trigger rolling update")
-		return nil
+	if !ready {
+		return errRetryReconciliation
 	}
 
-	return r.storageCon.triggerStatefulSetRollingUpdate(reqLogger, instance, resource.storageStatefulSet, resource.storageService)
+	need = r.storageCon.needRollingUpdate(reqLogger, cr, resource.storageStatefulSet)
+	if need {
+		err := r.storageCon.triggerStatefulSetRollingUpdate(reqLogger, cr, resource.storageStatefulSet, resource.storageService)
+		if err != nil {
+			return err
+		}
+		return errRetryReconciliation
+	}
+	ready, err = r.storageCon.storageAllReadyAndStable(resource.storageService, resource.storageStatefulSet, cr)
+	if err != nil {
+		reqLogger.Error(err, "Failed to check storage readiness",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+	if !ready {
+		return errRetryReconciliation
+	}
+
+	return nil
 }
 
 // SetupWithManager setups the controller
