@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,10 +15,14 @@ import (
 const DefaultServerProxyPort = 5299
 const redisPort1 = 7001
 const redisPort2 = 7002
+const redisMaxmemoryPodEnvName = "REDIS_MAX_MEMORY"
 const serverProxyContainerName = "server-proxy"
+const serverProxyActiveRedirectionEnvName = "UNDERMOON_ACTIVE_REDIRECTION"
+const serverProxyThreadNumberEnvName = "UNDERMOON_THREAD_NUMBER"
 const redisContainerName = "redis"
 const undermoonServiceTypeStorage = "storage"
 const storageTopologyKey = "undermoon-storage-topology-key"
+const redisReplicationOffsetThreshold uint32 = 10000
 
 // This service is only used internally for getting the created server proxies
 // which have not received UMCTL SETCLUSTER.
@@ -162,12 +167,16 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 			Value: "400000",
 		},
 		{
-			Name:  "UNDERMOON_ACTIVE_REDIRECTION",
+			Name:  serverProxyActiveRedirectionEnvName,
 			Value: strconv.FormatBool(cr.Spec.ActiveRedirection),
 		},
 		{
 			Name:  "UNDERMOON_DEFAULT_REDIRECTION_ADDRESS",
 			Value: firstProxyAddress,
+		},
+		{
+			Name:  serverProxyThreadNumberEnvName,
+			Value: strconv.FormatUint(uint64(cr.Spec.ProxyThreads), 10),
 		},
 	}
 
@@ -181,34 +190,13 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 			"-c",
 			fmt.Sprintf("UNDERMOON_ANNOUNCE_ADDRESS=\"%s:%d\" server_proxy", fqdn, cr.Spec.Port),
 		},
-		Env:       env,
-		Resources: cr.Spec.ProxyResources,
-		Lifecycle: genPreStopHookLifeCycle([]string{"sleep", "30"}),
+		Env:            env,
+		Resources:      cr.Spec.ProxyResources,
+		Lifecycle:      genPreStopHookLifeCycle([]string{"sleep", "30"}),
+		ReadinessProbe: genServerProxyReadinessProbe(cr.Spec.Port),
 	}
 	redisContainer1 := genRedisContainer(1, cr.Spec.RedisImage, cr.Spec.MaxMemory, redisPort1, cr)
 	redisContainer2 := genRedisContainer(2, cr.Spec.RedisImage, cr.Spec.MaxMemory, redisPort2, cr)
-
-	checkCmd := []string{
-		"bash",
-		"-c",
-		// Checks whether the server proxy has received UMCTL SETCLUSTER.
-		// Send UMCTL READY to server proxy and
-		// see whether it returns `:1\r\n`.
-		fmt.Sprintf(
-			"[ \"$(exec 5<>/dev/tcp/localhost/%d; printf '*2\r\n$5\r\nUMCTL\r\n$5\r\nREADY\r\n' >&5; head -c 2 <&5)\" == ':1' ]",
-			cr.Spec.Port,
-		),
-	}
-	serverProxyContainer.ReadinessProbe = &corev1.Probe{
-		Handler: corev1.Handler{
-			Exec: &corev1.ExecAction{
-				Command: checkCmd,
-			},
-		},
-		PeriodSeconds:    1,
-		SuccessThreshold: 1,
-		FailureThreshold: 1,
-	}
 
 	podSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -216,6 +204,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
+				// `storageStatefulSetChanged` depends on this order.
 				serverProxyContainer,
 				redisContainer1,
 				redisContainer2,
@@ -255,7 +244,7 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 		Command:         []string{"redis-server"},
 		Args: []string{
 			"--maxmemory",
-			fmt.Sprintf("%dMB", maxMemory),
+			fmt.Sprintf("$(%s)MB", redisMaxmemoryPodEnvName),
 			"--port",
 			portStr,
 			"--slave-announce-port",
@@ -264,11 +253,223 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 			podIPEnvStr,
 			"--maxmemory-policy",
 			"allkeys-lru",
+			// Set an invalid replica config at the first time
+			// to mark whether a redis has its role set by server-proxy.
+			// This will be used in the readinessProbe to support rolling update.
+			"--slaveof",
+			"localhost",
+			"0", // Use zero port here.
 		},
-		Env:       []corev1.EnvVar{podIPEnv()},
-		Resources: cr.Spec.RedisResources,
-		Lifecycle: genPreStopHookLifeCycle([]string{"sleep", "30"}),
+		Env: []corev1.EnvVar{
+			podIPEnv(),
+			{
+				Name:  redisMaxmemoryPodEnvName,
+				Value: fmt.Sprintf("%d", maxMemory),
+			},
+		},
+		Resources:      cr.Spec.RedisResources,
+		Lifecycle:      genPreStopHookLifeCycle([]string{"sleep", "30"}),
+		ReadinessProbe: genRedisReadinessProbe(port, redisReplicationOffsetThreshold),
 	}
+}
+
+// This is copied from `./scripts/redis-readiness.sh`.
+// See the comments there for details.
+var redisReadinessScript string = `
+set +e;
+TAG_FILE="${0}";
+PORT="${1}";
+OFFSET_THRESHOLD="${2}";
+
+tag_file_dir=$(dirname "${TAG_FILE}");
+mkdir -p "${tag_file_dir}";
+if test -f "${TAG_FILE}"; then
+    echo "${TAG_FILE} exists";
+    exit 0;
+fi;
+
+repl_info=$(redis-cli -h localhost -p "${PORT}" INFO REPLICATION);
+role=$(echo "${repl_info}" | grep 'role:' | cut -d':' -f2 | tr -d '\r' );
+echo "role: ${role}";
+
+if [ "${role}" = 'master' ]; then
+    echo "role: ${role}. Create tag file ${TAG_FILE}";
+    touch "${TAG_FILE}";
+    exit 0;
+fi;
+
+slave_repl_offset=$(echo "${repl_info}" | grep 'master_repl_offset:' | cut -d':' -f2 | tr -d '\r');
+if [ "${slave_repl_offset}" -eq 0 ]; then
+    echo "Zero slave_repl_offset. The replica still cannot connect to its master.";
+    exit 1;
+fi;
+
+master_host=$(echo "${repl_info}" | grep 'master_host:' | cut -d':' -f2 | tr -d '\r');
+master_port=$(echo "${repl_info}" | grep 'master_port:' | cut -d':' -f2 | tr -d '\r');
+echo "master: ${master_host} ${master_port}";
+
+if [ "${master_port}" -eq 0 ]; then
+    echo "Zero master port. The role is not set yet.";
+    exit 1;
+fi;
+
+master_repl_info=$(redis-cli -h "${master_host}" -p "${master_port}" INFO REPLICATION);
+master_repl_offset=$(echo "${master_repl_info}" | grep 'master_repl_offset:' | cut -d':' -f2 | tr -d '\r');
+echo "master_repl_offset: ${master_repl_offset} slave_repl_offset: ${slave_repl_offset}";
+offset=$((master_repl_offset - slave_repl_offset));
+echo "offset: ${offset}";
+
+if [ "${master_repl_offset}" -gt 0 ] && [ "${offset}" -ge 0 ] && [ "${offset}" -lt "${OFFSET_THRESHOLD}" ]; then
+    echo "Replication is done. Create tag file ${TAG_FILE}";
+    touch "${TAG_FILE}";
+    exit 0;
+fi;
+
+echo "replica pending on replication";
+exit 1;
+`
+
+func genRedisReadinessProbe(port uint32, offsetThreshold uint32) *corev1.Probe {
+	// When rolling update, we need to wait for the second part in the chunk
+	// to synchronize all the data from the masters in the first part
+	// before rebooting the first part.
+	// Thus, during the synchronization we need to make this second part "not ready"
+	// and kubernetes will wait for it to become ready to move to reboot the first part.
+	//
+	// Note that we can't put this part to the pre-stop hook
+	// because no matter whether the pre-stop script finish or not,
+	// the pod of first part will be tagged TERMINATING and is not available to users.
+	cmd := []string{
+		"sh",
+		"-c",
+		redisReadinessScript,
+		"/redis-state/redis-ready",
+		fmt.Sprintf("%d", port),
+		fmt.Sprintf("%d", offsetThreshold),
+	}
+	return &corev1.Probe{
+		Handler: corev1.Handler{
+			Exec: &corev1.ExecAction{Command: cmd},
+		},
+		TimeoutSeconds:   3,
+		PeriodSeconds:    5,
+		SuccessThreshold: 1,
+		FailureThreshold: 1,
+	}
+}
+
+func genServerProxyReadinessProbe(serverProxyPort uint32) *corev1.Probe {
+	checkCmd := []string{
+		"bash",
+		"-c",
+		// Checks whether the server proxy has received UMCTL SETCLUSTER.
+		// Send UMCTL READY to server proxy and
+		// see whether it returns `:1\r\n`.
+		fmt.Sprintf(
+			"[ \"$(exec 5<>/dev/tcp/localhost/%d; printf '*2\r\n$5\r\nUMCTL\r\n$5\r\nREADY\r\n' >&5; head -c 2 <&5)\" == ':1' ]",
+			serverProxyPort,
+		),
+	}
+	return &corev1.Probe{
+		Handler: corev1.Handler{
+			Exec: &corev1.ExecAction{
+				Command: checkCmd,
+			},
+		},
+		PeriodSeconds:    1,
+		SuccessThreshold: 1,
+		FailureThreshold: 1,
+	}
+}
+
+func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, curr *appsv1.StatefulSet) bool {
+	serverProxyContainer := curr.Spec.Template.Spec.Containers[0]
+	redis1Container := curr.Spec.Template.Spec.Containers[1]
+	redis2Container := curr.Spec.Template.Spec.Containers[2]
+
+	if cr.Spec.UndermoonImage != serverProxyContainer.Image {
+		reqLogger.Info("Proxy image is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImage", serverProxyContainer.Image, "NewImage", cr.Spec.UndermoonImage,
+		)
+		return true
+	}
+
+	if cr.Spec.UndermoonImagePullPolicy != serverProxyContainer.ImagePullPolicy {
+		reqLogger.Info("Proxy image pull policy is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImagePullPolicy", serverProxyContainer.ImagePullPolicy,
+			"NewImagePullPolicy", cr.Spec.UndermoonImagePullPolicy,
+		)
+		return true
+	}
+
+	if cr.Spec.RedisImage != redis1Container.Image || cr.Spec.RedisImage != redis2Container.Image {
+		reqLogger.Info("Redis image is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImage1", redis1Container.Image,
+			"OldImage2", redis2Container.Image,
+			"NewImage", cr.Spec.UndermoonImage,
+		)
+		return true
+	}
+
+	if !resourceRequirementsEqual(cr.Spec.ProxyResources, serverProxyContainer.Resources) {
+		reqLogger.Info("Proxy resource is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldResource", serverProxyContainer.Resources, "NewResource", cr.Spec.CoordinatorResources,
+		)
+		return true
+	}
+
+	redis1ResourceChanged := !resourceRequirementsEqual(cr.Spec.RedisResources, redis1Container.Resources)
+	redis2ResourceChanged := !resourceRequirementsEqual(cr.Spec.RedisResources, redis2Container.Resources)
+	if redis1ResourceChanged || redis2ResourceChanged {
+		reqLogger.Info("Redis resource is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldResource1", redis1Container.Resources,
+			"OldResource2", redis2Container.Resources,
+			"NewResource", cr.Spec.CoordinatorResources,
+		)
+		return true
+	}
+
+	// The change of `chunkNumber` will be handled in the scaling part.
+
+	redis1Maxmemory := getEnvValue(redis1Container.Env, redisMaxmemoryPodEnvName)
+	redis2Maxmemory := getEnvValue(redis2Container.Env, redisMaxmemoryPodEnvName)
+	specMaxmeory := fmt.Sprintf("%d", cr.Spec.MaxMemory)
+	if specMaxmeory != redis1Maxmemory || specMaxmeory != redis2Maxmemory {
+		reqLogger.Info("Redis maxmemory is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldMaxmemory1", redis1Maxmemory,
+			"OldMaxmemory2", redis2Maxmemory,
+			"NewMaxmemory", specMaxmeory,
+		)
+		return true
+	}
+
+	activeRedirection := getEnvValue(serverProxyContainer.Env, serverProxyActiveRedirectionEnvName)
+	if strconv.FormatBool(cr.Spec.ActiveRedirection) != activeRedirection {
+		reqLogger.Info("Proxy ActiveRedirection is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldActiveRedirection", activeRedirection,
+			"NewActiveRedirection", cr.Spec.ActiveRedirection,
+		)
+		return true
+	}
+
+	threadNumber := getEnvValue(serverProxyContainer.Env, serverProxyThreadNumberEnvName)
+	if strconv.FormatUint(uint64(cr.Spec.ProxyThreads), 10) != threadNumber {
+		reqLogger.Info("Proxy thread number is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldThreadNumber", threadNumber,
+			"NewThreadNumber", cr.Spec.ProxyThreads,
+		)
+		return true
+	}
+
+	return false
 }
 
 // StorageStatefulSetName defines the StatefulSet for server proxy.

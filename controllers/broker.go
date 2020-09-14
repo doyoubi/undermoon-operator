@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -148,6 +149,37 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 		},
 	}
+}
+
+func brokerStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, curr *appsv1.StatefulSet) bool {
+	container := curr.Spec.Template.Spec.Containers[0]
+
+	if cr.Spec.UndermoonImage != container.Image {
+		reqLogger.Info("Broker image is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImage", container.Image, "NewImage", cr.Spec.UndermoonImage,
+		)
+		return true
+	}
+
+	if cr.Spec.UndermoonImagePullPolicy != container.ImagePullPolicy {
+		reqLogger.Info("Broker image pull policy is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldImagePullPolicy", container.ImagePullPolicy,
+			"NewImagePullPolicy", cr.Spec.UndermoonImagePullPolicy,
+		)
+		return true
+	}
+
+	if !resourceRequirementsEqual(cr.Spec.BrokerResources, container.Resources) {
+		reqLogger.Info("Broker resource is changed.",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
+			"OldResource", container.Resources, "NewResource", cr.Spec.BrokerResources,
+		)
+		return true
+	}
+
+	return false
 }
 
 // BrokerStatefulSetName defines the statefulset for memory broker.

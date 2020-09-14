@@ -5,6 +5,7 @@ import (
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
+	pkgerrors "github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -152,4 +153,56 @@ func (con *coordinatorController) configSetBroker(reqLogger logr.Logger, cr *und
 		}
 	}
 	return err
+}
+
+func (con *coordinatorController) triggerStatefulSetRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, coordinatorStatefulSet *appsv1.StatefulSet, coordinatorService *corev1.Service) error {
+	err := con.updateStatefulSetHelper(reqLogger, cr, coordinatorStatefulSet)
+	if err != nil {
+		return err
+	}
+
+	ready, err := con.coordiantorAllReady(coordinatorStatefulSet, coordinatorService)
+	if err != nil {
+		reqLogger.Error(err, "Failed to check coordinator readiness",
+			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+	if !ready {
+		reqLogger.Info("coordinator StatefulSet is not ready after rolling update. Try again.")
+		return errRetryReconciliation
+	}
+
+	return nil
+}
+
+func (con *coordinatorController) updateStatefulSetHelper(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, coordinatorStatefulSet *appsv1.StatefulSet) error {
+	newStatefulSet := createCoordinatorStatefulSet(cr)
+	coordinatorStatefulSet.Spec = newStatefulSet.Spec
+
+	if len(coordinatorStatefulSet.ObjectMeta.ResourceVersion) == 0 {
+		err := pkgerrors.Errorf("Empty ResourceVersion when updating coordinatorStatefulSet: %s", cr.ObjectMeta.Name)
+		reqLogger.Error(err, "failed to update coordiantor statefulset. Empty ResourceVersion.",
+			"Name", cr.ObjectMeta.Name,
+			"ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+
+	err := con.r.client.Update(context.TODO(), coordinatorStatefulSet)
+	if err != nil {
+		if errors.IsConflict(err) {
+			reqLogger.Info("Conflict on updating coordiantor StatefulSet. Try again.")
+			return errRetryReconciliation
+		}
+		reqLogger.Error(err, "failed to update coordiantor statefulset",
+			"Name", cr.ObjectMeta.Name,
+			"ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+	reqLogger.Info("Successfully update coordiantor StatefulSet")
+
+	return nil
+}
+
+func (con *coordinatorController) needRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, coordinatorStatefulSet *appsv1.StatefulSet) bool {
+	return coordinatorStatefulSetChanged(reqLogger, cr, coordinatorStatefulSet)
 }
