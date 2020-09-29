@@ -1,7 +1,11 @@
 package controllers
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
+	"io/ioutil"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -187,4 +191,43 @@ func resourceListEqual(lhs, rhs corev1.ResourceList) bool {
 	}
 
 	return true
+}
+
+func compressString(origin string) (string, error) {
+	var b bytes.Buffer
+	w, err := gzip.NewWriterLevel(&b, gzip.BestCompression)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = w.Write([]byte(origin))
+	if err != nil {
+		return "", err
+	}
+	// Need to close it to flush data to bytes.Buffer.
+	w.Close()
+
+	data := base64.StdEncoding.EncodeToString(b.Bytes())
+	return data, nil
+}
+
+func decompressString(data string) (string, error) {
+	compressed, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", err
+	}
+
+	r, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		return "", err
+	}
+	// Don't need to close on error.
+	defer r.Close()
+
+	origin, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+
+	return string(origin), nil
 }
