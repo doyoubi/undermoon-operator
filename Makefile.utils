@@ -48,6 +48,9 @@ lint:
 	helm lint helm/undermoon-cluster --strict
 	helm lint chaostest/undermoon-checker --strict
 
+unittest:
+	go test ./... -run '^(TestUnit)'
+
 lint-chaostest-script:
 	# pip install -r chaostest/ctrl_requirements.txt
 	black chaostest

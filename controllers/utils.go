@@ -56,6 +56,22 @@ func createStatefulSetGuard(createFunc func() (*appsv1.StatefulSet, error)) (*ap
 	return nil, err
 }
 
+func createConfigMapGuard(createFunc func() (*corev1.ConfigMap, error)) (*corev1.ConfigMap, error) {
+	var cfg *corev1.ConfigMap
+	var err error
+	for i := 0; i != 3; i++ {
+		cfg, err = createFunc()
+		if err == nil {
+			return cfg, err
+		}
+		if errors.IsAlreadyExists(err) {
+			continue
+		}
+		return nil, err
+	}
+	return nil, err
+}
+
 func getEndpoints(client client.Client, serviceName, namespace string) ([]corev1.EndpointAddress, error) {
 	endpoints := &corev1.Endpoints{}
 	// The endpoints names are the same as serviceName

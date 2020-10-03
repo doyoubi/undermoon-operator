@@ -1,11 +1,18 @@
 package controllers
 
 import (
+	"context"
+
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type metaController struct {
+	r      *UndermoonReconciler
 	client *brokerClient
 }
 
@@ -228,4 +235,95 @@ func (con *metaController) fixBrokerEpoch(reqLogger logr.Logger, masterBrokerAdd
 	}
 
 	return nil
+}
+
+func (con *metaController) createMeta(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) error {
+	_, err := createServiceGuard(func() (*corev1.Service, error) {
+		return con.getOrCreateOperatorMetaService(reqLogger, cr)
+	})
+	if err != nil {
+		reqLogger.Error(err, "failed to create operator meta service", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+
+	_, err = createConfigMapGuard(func() (*corev1.ConfigMap, error) {
+		return con.getOrCreateConfigMap(reqLogger, cr)
+	})
+	if err != nil {
+		reqLogger.Error(err, "failed to create meta configmap", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+
+	return nil
+}
+
+func (con *metaController) getOrCreateOperatorMetaService(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.Service, error) {
+	service := createOperatorMetaService(cr)
+
+	if err := controllerutil.SetControllerReference(cr, service, con.r.scheme); err != nil {
+		return nil, err
+	}
+
+	found := &corev1.Service{}
+	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new operator meta service", "Namespace", service.Namespace, "Name", service.Name)
+		err = con.r.client.Create(context.TODO(), service)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				reqLogger.Info("operator meta service already exists")
+			} else {
+				reqLogger.Error(err, "failed to create operator meta service")
+			}
+			return nil, err
+		}
+
+		reqLogger.Info("Successfully created a new operator meta service", "Namespace", service.Namespace, "Name", service.Name)
+		return service, nil
+	} else if err != nil {
+		reqLogger.Error(err, "failed to get operator meta service")
+		return nil, err
+	}
+
+	reqLogger.Info("Skip reconcile: operator meta service already exists", "Namespace", found.Namespace, "Name", found.Name)
+	return found, nil
+}
+
+func (con *metaController) getOrCreateConfigMap(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.ConfigMap, error) {
+	initData, err := compressString("{}")
+	if err != nil {
+		reqLogger.Error(err, "failed to compress init data")
+		return nil, err
+	}
+	configmap := createMetaConfigMap(cr, initData)
+
+	if err := controllerutil.SetControllerReference(cr, configmap, con.r.scheme); err != nil {
+		reqLogger.Error(err, "SetControllerReference failed")
+		return nil, err
+	}
+
+	// Check if this meta ConfigMap already exists
+	found := &corev1.ConfigMap{}
+	err = con.r.client.Get(context.TODO(), types.NamespacedName{Name: configmap.Name, Namespace: configmap.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new meta configmap", "Namespace", configmap.Namespace, "Name", configmap.Name)
+		err = con.r.client.Create(context.TODO(), configmap)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				reqLogger.Info("meta configmap already exists")
+			} else {
+				reqLogger.Error(err, "failed to create meta configmap")
+			}
+			return nil, err
+		}
+		// ConfigMap created successfully - don't requeue
+		return configmap, nil
+	} else if err != nil {
+		reqLogger.Error(err, "failed to get meta configmap")
+		return nil, err
+	}
+
+	// configmap already exists - don't requeue
+	reqLogger.Info("Skip reconcile: meta configmap already exists", "Namespace", found.Namespace, "Name", found.Name)
+	return found, nil
 }
