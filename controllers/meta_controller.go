@@ -238,55 +238,22 @@ func (con *metaController) fixBrokerEpoch(reqLogger logr.Logger, masterBrokerAdd
 }
 
 func (con *metaController) createMeta(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) error {
-	_, err := createServiceGuard(func() (*corev1.Service, error) {
-		return con.getOrCreateOperatorMetaService(reqLogger, cr)
-	})
-	if err != nil {
-		reqLogger.Error(err, "failed to create operator meta service", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return err
-	}
-
-	_, err = createConfigMapGuard(func() (*corev1.ConfigMap, error) {
+	_, err := createConfigMapGuard(func() (*corev1.ConfigMap, error) {
 		return con.getOrCreateConfigMap(reqLogger, cr)
 	})
 	if err != nil {
-		reqLogger.Error(err, "failed to create meta configmap", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create meta configmap")
 		return err
 	}
 
+	_, err = createSecretGuard(func() (*corev1.Secret, error) {
+		return con.getOrCreateMetaSecret(reqLogger, cr)
+	})
+	if err != nil {
+		reqLogger.Error(err, "failed to generate password")
+	}
+
 	return nil
-}
-
-func (con *metaController) getOrCreateOperatorMetaService(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.Service, error) {
-	service := createOperatorMetaService(cr)
-
-	if err := controllerutil.SetControllerReference(cr, service, con.r.scheme); err != nil {
-		return nil, err
-	}
-
-	found := &corev1.Service{}
-	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new operator meta service", "Namespace", service.Namespace, "Name", service.Name)
-		err = con.r.client.Create(context.TODO(), service)
-		if err != nil {
-			if errors.IsAlreadyExists(err) {
-				reqLogger.Info("operator meta service already exists")
-			} else {
-				reqLogger.Error(err, "failed to create operator meta service")
-			}
-			return nil, err
-		}
-
-		reqLogger.Info("Successfully created a new operator meta service", "Namespace", service.Namespace, "Name", service.Name)
-		return service, nil
-	} else if err != nil {
-		reqLogger.Error(err, "failed to get operator meta service")
-		return nil, err
-	}
-
-	reqLogger.Info("Skip reconcile: operator meta service already exists", "Namespace", found.Namespace, "Name", found.Name)
-	return found, nil
 }
 
 func (con *metaController) getOrCreateConfigMap(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.ConfigMap, error) {
@@ -295,6 +262,7 @@ func (con *metaController) getOrCreateConfigMap(reqLogger logr.Logger, cr *under
 		reqLogger.Error(err, "failed to compress init data")
 		return nil, err
 	}
+
 	configmap := createMetaConfigMap(cr, initData)
 
 	if err := controllerutil.SetControllerReference(cr, configmap, con.r.scheme); err != nil {
@@ -325,5 +293,45 @@ func (con *metaController) getOrCreateConfigMap(reqLogger logr.Logger, cr *under
 
 	// configmap already exists - don't requeue
 	reqLogger.Info("Skip reconcile: meta configmap already exists", "Namespace", found.Namespace, "Name", found.Name)
+	return found, nil
+}
+
+func (con *metaController) getOrCreateMetaSecret(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.Secret, error) {
+	password, err := genBrokerPassword()
+	if err != nil {
+		reqLogger.Error(err, "failed to generate broker password")
+		return nil, err
+	}
+
+	secret := createMetaSecret(cr, password)
+
+	if err := controllerutil.SetControllerReference(cr, secret, con.r.scheme); err != nil {
+		reqLogger.Error(err, "SetControllerReference failed")
+		return nil, err
+	}
+
+	// Check if this meta Secret already exists
+	found := &corev1.Secret{}
+	err = con.r.client.Get(context.TODO(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new meta secret", "Name", secret.Name)
+		err = con.r.client.Create(context.TODO(), secret)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				reqLogger.Info("meta secret already exists")
+			} else {
+				reqLogger.Error(err, "failed to create meta secret")
+			}
+			return nil, err
+		}
+		// Secret created successfully - don't requeue
+		return secret, nil
+	} else if err != nil {
+		reqLogger.Error(err, "failed to get meta secret")
+		return nil, err
+	}
+
+	// secret already exists - don't requeue
+	reqLogger.Info("Skip reconcile: meta secret already exists", "Name", found.Name)
 	return found, nil
 }

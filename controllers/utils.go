@@ -72,6 +72,22 @@ func createConfigMapGuard(createFunc func() (*corev1.ConfigMap, error)) (*corev1
 	return nil, err
 }
 
+func createSecretGuard(createFunc func() (*corev1.Secret, error)) (*corev1.Secret, error) {
+	var secret *corev1.Secret
+	var err error
+	for i := 0; i != 3; i++ {
+		secret, err = createFunc()
+		if err == nil {
+			return secret, err
+		}
+		if errors.IsAlreadyExists(err) {
+			continue
+		}
+		return nil, err
+	}
+	return nil, err
+}
+
 func getEndpoints(client client.Client, serviceName, namespace string) ([]corev1.EndpointAddress, error) {
 	endpoints := &corev1.Endpoints{}
 	// The endpoints names are the same as serviceName

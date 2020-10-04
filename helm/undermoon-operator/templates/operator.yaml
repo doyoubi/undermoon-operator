@@ -1,19 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: undermoon-operator
+  namespace: '{{ .Release.Namespace }}'
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    control-plane: undermoon-operator
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    control-plane: controller-manager
-  name: undermoon-operator-controller-manager
+    control-plane: undermoon-operator
+  name: undermoon-operator
   namespace: '{{ .Release.Namespace }}'
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: undermoon-operator
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: undermoon-operator
     spec:
       containers:
       - args:

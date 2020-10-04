@@ -51,9 +51,11 @@ func BrokerServiceName(undermoonName string) string {
 }
 
 func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSet {
+	undermoonName := cr.ObjectMeta.Name
+
 	labels := map[string]string{
 		"undermoonService":     undermoonServiceTypeBroker,
-		"undermoonName":        cr.ObjectMeta.Name,
+		"undermoonName":        undermoonName,
 		"undermoonClusterName": cr.Spec.ClusterName,
 	}
 
@@ -109,6 +111,33 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 		{
 			Name:  "UNDERMOON_DEBUG",
 			Value: "false",
+		},
+		{
+			Name:  "undermoon_storage_type",
+			Value: "http",
+		},
+		{
+			Name:  "undermoon_storage_name",
+			Value: undermoonName,
+		},
+		{
+			Name: "undermoon_storage_password",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: MetaSecretName(undermoonName),
+					},
+					Key: metaPasswordKey,
+				},
+			},
+		},
+		{
+			Name:  "undermoon_http_storage_address",
+			Value: fmt.Sprintf("%s:%d", metaServiceHost, metaServicePort),
+		},
+		{
+			Name:  "undermoon_refresh_interval",
+			Value: "5",
 		},
 	}
 	container := corev1.Container{

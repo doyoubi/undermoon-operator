@@ -103,7 +103,7 @@ debug-start:
 
 debug-stop:
 	kubectl delete undermoon --all || true
-	kubectl delete deployments,service -l control-plane=controller-manager || true
+	kubectl delete deployments,service -l control-plane=undermoon-operator || true
 	kubectl delete role,rolebinding --all || true
 	$(MAKE) uninstall
 

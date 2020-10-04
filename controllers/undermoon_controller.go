@@ -67,7 +67,10 @@ type UndermoonReconciler struct {
 
 // Reconcile implements Reconciler
 func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := r.log.WithValues(
+		"Request.Namespace", request.Namespace,
+		"Request.Name", request.Name,
+	)
 	reqLogger.Info("Reconciling Undermoon")
 
 	// Fetch the Undermoon instance
@@ -83,6 +86,11 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	reqLogger = reqLogger.WithValues(
+		"UndermoonName", instance.ObjectMeta.Name,
+		"ClusterName", instance.Spec.ClusterName,
+	)
 
 	resource, err := r.createResources(reqLogger, instance)
 	if err != nil {

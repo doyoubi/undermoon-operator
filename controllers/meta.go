@@ -3,45 +3,21 @@ package controllers
 import (
 	"fmt"
 
+	"github.com/sethvargo/go-password/password"
+
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const metaStoreKey = "broker_meta_store"
-const metaServiceName = "undermoon-meta"
-const metaServicePort = 9999
-
-// This service connects to this operator.
-func createOperatorMetaService(cr *undermoonv1alpha1.Undermoon) *corev1.Service {
-	undermoonName := cr.ObjectMeta.Name
-
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      OperatorMetaServiceName(undermoonName),
-			Namespace: cr.Namespace,
-		},
-		Spec: corev1.ServiceSpec{
-			Type:         corev1.ServiceTypeExternalName,
-			ExternalName: genOperatorMetaFQDN(cr.Namespace),
-			Ports: []corev1.ServicePort{
-				{
-					Port:     metaServicePort,
-					Protocol: corev1.ProtocolTCP,
-				},
-			},
-		},
-	}
-}
-
-// OperatorMetaServiceName defines the service for operator HTTP meta API.
-func OperatorMetaServiceName(undermoonName string) string {
-	return fmt.Sprintf("%s-meta-svc", undermoonName)
-}
-
-func genOperatorMetaFQDN(namespace string) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local", metaServiceName, namespace)
-}
+const (
+	metaStoreKey    = "broker_meta_store"
+	metaPasswordKey = "broker_meta_password"
+	// The service is provided by this operator.
+	metaServiceName = "undermoon-meta"
+	metaServiceHost = "undermoon-operator"
+	metaServicePort = 9999
+)
 
 func createMetaConfigMap(cr *undermoonv1alpha1.Undermoon, initData string) *corev1.ConfigMap {
 	undermoonName := cr.ObjectMeta.Name
@@ -67,4 +43,34 @@ func createMetaConfigMap(cr *undermoonv1alpha1.Undermoon, initData string) *core
 // MetaConfigMapName defines the name for meta ConfigMap.
 func MetaConfigMapName(undermoonName string) string {
 	return fmt.Sprintf("%s-cfg", undermoonName)
+}
+
+func createMetaSecret(cr *undermoonv1alpha1.Undermoon, password string) *corev1.Secret {
+	undermoonName := cr.ObjectMeta.Name
+
+	labels := map[string]string{
+		"undermoonName":        undermoonName,
+		"undermoonClusterName": cr.Spec.ClusterName,
+	}
+
+	data := make(map[string][]byte)
+	data[metaPasswordKey] = []byte(password)
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      MetaSecretName(undermoonName),
+			Namespace: cr.Namespace,
+			Labels:    labels,
+		},
+		Data: data,
+	}
+}
+
+// MetaSecretName defines the name for meta ConfigMap.
+func MetaSecretName(undermoonName string) string {
+	return fmt.Sprintf("%s-sc", undermoonName)
+}
+
+func genBrokerPassword() (string, error) {
+	return password.Generate(64, 10, 10, false, false)
 }
