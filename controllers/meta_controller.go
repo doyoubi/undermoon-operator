@@ -4,16 +4,18 @@ import (
 	"context"
 	"encoding/json"
 
-	pkgerrors "github.com/pkg/errors"
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-var externalStoreConflict = pkgerrors.New("ResourceVersion conflict")
+var (
+	errExternalStoreConflict = pkgerrors.New("ResourceVersion conflict")
+)
 
 type metaController struct {
 	r      *UndermoonReconciler
@@ -255,6 +257,7 @@ func (con *metaController) createMeta(reqLogger logr.Logger, cr *undermoonv1alph
 	})
 	if err != nil {
 		reqLogger.Error(err, "failed to generate password")
+		return err
 	}
 
 	return nil
@@ -313,8 +316,14 @@ func (con *metaController) getExternalStore(reqLogger logr.Logger, undermoonName
 		return nil, err
 	}
 
+	decompressData, err := decompressString(data)
+	if err != nil {
+		reqLogger.Error(err, "failed to decompress data")
+		return nil, err
+	}
+
 	store := make(map[string]interface{})
-	err = json.Unmarshal([]byte(data), store)
+	err = json.Unmarshal([]byte(decompressData), &store)
 	if err != nil {
 		reqLogger.Error(err, "failed to decode json")
 		return nil, err
@@ -322,8 +331,31 @@ func (con *metaController) getExternalStore(reqLogger logr.Logger, undermoonName
 
 	return &externalStore{
 		Version: configmap.ObjectMeta.ResourceVersion,
-		Store: store,
+		Store:   store,
 	}, nil
+}
+
+func (con *metaController) initOrUpdateExternalStore(reqLogger logr.Logger, undermoonName, namespace string, store *externalStore) error {
+	// null values will become empty strings.
+	if len(store.Version) == 0 {
+		return con.initExternalStore(reqLogger, undermoonName, namespace, store.Store)
+	}
+	return con.updateExternalStore(reqLogger, undermoonName, namespace, store)
+}
+
+func (con *metaController) initExternalStore(reqLogger logr.Logger, undermoonName, namespace string, store   map[string]interface{}) error {
+	currStore, err := con.getExternalStore(reqLogger, undermoonName, namespace)
+	if err != nil {
+		return err
+	}
+
+	if len(currStore.Store) != 0 {
+		reqLogger.Info("external storage has already initialized")
+		return nil
+	}
+
+	currStore.Store = store
+	return  con.updateExternalStore(reqLogger, undermoonName, namespace, currStore)
 }
 
 func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonName, namespace string, store *externalStore) error {
@@ -333,7 +365,7 @@ func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonN
 	}
 
 	if configmap.ObjectMeta.ResourceVersion != store.Version {
-		return externalStoreConflict
+		return errExternalStoreConflict
 	}
 
 	data, err := json.Marshal(store.Store)
@@ -342,12 +374,18 @@ func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonN
 		return nil
 	}
 
-	configmap.Data[metaStoreKey] = string(data)
+	compressedData, err := compressString(string(data))
+	if err != nil {
+		reqLogger.Error(err, "failed to compress store")
+		return err
+	}
+
+	configmap.Data[metaStoreKey] = string(compressedData)
 
 	err = con.r.client.Update(context.Background(), configmap)
 	if err != nil && errors.IsConflict(err) {
 		reqLogger.Error(err, "failed to update store in configmap: conflict")
-		return externalStoreConflict
+		return errExternalStoreConflict
 	} else if err != nil {
 		reqLogger.Error(err, "failed to update store in configmap")
 		return err
@@ -364,7 +402,7 @@ func (con *metaController) getConfigMap(reqLogger logr.Logger, undermoonName, na
 	if err != nil && errors.IsNotFound(err) {
 		return nil, err
 	} else if err != nil {
-		reqLogger.Error(err, "failed to get configmap", )
+		reqLogger.Error(err, "failed to get configmap")
 		return nil, err
 	}
 
@@ -419,7 +457,7 @@ func (con *metaController) checkMetaSecret(reqLogger logr.Logger, undermoonName,
 	if err != nil && errors.IsNotFound(err) {
 		return false, nil
 	} else if err != nil {
-		reqLogger.Error(err, "failed to get meta secret", )
+		reqLogger.Error(err, "failed to get meta secret")
 		return false, err
 	}
 

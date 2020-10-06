@@ -62,6 +62,8 @@ type UndermoonReconciler struct {
 // +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 
 // Reconcile implements Reconciler
@@ -204,6 +206,12 @@ type umResource struct {
 }
 
 func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) (*umResource, error) {
+	err := r.metaCon.createMeta(reqLogger, instance)
+	if err != nil {
+		reqLogger.Error(err, "failed to create configmap and secret", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		return nil, err
+	}
+
 	brokerStatefulSet, brokerService, err := r.brokerCon.createBroker(reqLogger, instance)
 	if err != nil {
 		reqLogger.Error(err, "failed to create broker", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)

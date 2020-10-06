@@ -16,8 +16,7 @@ const (
 	metaStoreKey    = "broker_meta_store"
 	metaPasswordKey = "broker_meta_password"
 	// The service is provided by this operator.
-	metaServiceName = "undermoon-meta"
-	metaServiceHost = "undermoon-operator"
+	metaServiceHost = "undermoon-operator-storage"
 	metaServicePort = 9999
 )
 

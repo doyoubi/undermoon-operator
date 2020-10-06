@@ -113,15 +113,15 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 			Value: "false",
 		},
 		{
-			Name:  "undermoon_storage_type",
+			Name:  "UNDERMOON_STORAGE_TYPE",
 			Value: "http",
 		},
 		{
-			Name:  "undermoon_storage_name",
-			Value: undermoonName,
+			Name:  "UNDERMOON_STORAGE_NAME",
+			Value: brokerStorageName(undermoonName, cr.Namespace),
 		},
 		{
-			Name: "undermoon_storage_password",
+			Name: "UNDERMOON_STORAGE_PASSWORD",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -132,11 +132,11 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 			},
 		},
 		{
-			Name:  "undermoon_http_storage_address",
+			Name:  "UNDERMOON_HTTP_STORAGE_ADDRESS",
 			Value: fmt.Sprintf("%s:%d", metaServiceHost, metaServicePort),
 		},
 		{
-			Name:  "undermoon_refresh_interval",
+			Name:  "UNDERMOON_REFRESH_INTERVAL",
 			Value: "5",
 		},
 	}

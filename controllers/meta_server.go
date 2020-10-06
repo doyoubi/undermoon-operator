@@ -174,7 +174,7 @@ func (server *metaServer) handleUpdateMeta(c *gin.Context) {
 		return
 	}
 
-	err = server.metaCon.updateExternalStore(reqLogger, undermoonName, namespace, &store)
+	err = server.metaCon.initOrUpdateExternalStore(reqLogger, undermoonName, namespace, &store)
 	if err != nil {
 		reqLogger.Error(err, "failed to update external store")
 		c.String(400, fmt.Sprintf("%s", err))
