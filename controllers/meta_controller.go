@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 
+	pkgerrors "github.com/pkg/errors"
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -10,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+var externalStoreConflict = pkgerrors.New("ResourceVersion conflict")
 
 type metaController struct {
 	r      *UndermoonReconciler
@@ -296,6 +300,77 @@ func (con *metaController) getOrCreateConfigMap(reqLogger logr.Logger, cr *under
 	return found, nil
 }
 
+func (con *metaController) getExternalStore(reqLogger logr.Logger, undermoonName, namespace string) (*externalStore, error) {
+	configmap, err := con.getConfigMap(reqLogger, undermoonName, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	data, ok := configmap.Data[metaStoreKey]
+	if !ok {
+		err = pkgerrors.New("configmap is deleted")
+		reqLogger.Error(err, "configmap is deleted")
+		return nil, err
+	}
+
+	store := make(map[string]interface{})
+	err = json.Unmarshal([]byte(data), store)
+	if err != nil {
+		reqLogger.Error(err, "failed to decode json")
+		return nil, err
+	}
+
+	return &externalStore{
+		Version: configmap.ObjectMeta.ResourceVersion,
+		Store: store,
+	}, nil
+}
+
+func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonName, namespace string, store *externalStore) error {
+	configmap, err := con.getConfigMap(reqLogger, undermoonName, namespace)
+	if err != nil {
+		return err
+	}
+
+	if configmap.ObjectMeta.ResourceVersion != store.Version {
+		return externalStoreConflict
+	}
+
+	data, err := json.Marshal(store.Store)
+	if err != nil {
+		reqLogger.Error(err, "failed to encode store")
+		return nil
+	}
+
+	configmap.Data[metaStoreKey] = string(data)
+
+	err = con.r.client.Update(context.Background(), configmap)
+	if err != nil && errors.IsConflict(err) {
+		reqLogger.Error(err, "failed to update store in configmap: conflict")
+		return externalStoreConflict
+	} else if err != nil {
+		reqLogger.Error(err, "failed to update store in configmap")
+		return err
+	}
+
+	return nil
+}
+
+func (con *metaController) getConfigMap(reqLogger logr.Logger, undermoonName, namespace string) (*corev1.ConfigMap, error) {
+	configmapName := MetaConfigMapName(undermoonName)
+
+	found := &corev1.ConfigMap{}
+	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: configmapName, Namespace: namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		return nil, err
+	} else if err != nil {
+		reqLogger.Error(err, "failed to get configmap", )
+		return nil, err
+	}
+
+	return found, nil
+}
+
 func (con *metaController) getOrCreateMetaSecret(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.Secret, error) {
 	password, err := genBrokerPassword()
 	if err != nil {
@@ -334,4 +409,26 @@ func (con *metaController) getOrCreateMetaSecret(reqLogger logr.Logger, cr *unde
 	// secret already exists - don't requeue
 	reqLogger.Info("Skip reconcile: meta secret already exists", "Name", found.Name)
 	return found, nil
+}
+
+func (con *metaController) checkMetaSecret(reqLogger logr.Logger, undermoonName, namespace, password string) (bool, error) {
+	secretName := MetaSecretName(undermoonName)
+
+	found := &corev1.Secret{}
+	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		reqLogger.Error(err, "failed to get meta secret", )
+		return false, err
+	}
+
+	secretPassword, ok := found.Data[metaPasswordKey]
+	if !ok {
+		err = pkgerrors.New("meta secret is deleted")
+		reqLogger.Error(err, "meta secret is deleted")
+		return false, err
+	}
+
+	return string(secretPassword) == password, nil
 }

@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"fmt"
+	"strings"
 
+	pkgerrors "github.com/pkg/errors"
 	"github.com/sethvargo/go-password/password"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
@@ -18,6 +20,8 @@ const (
 	metaServiceHost = "undermoon-operator"
 	metaServicePort = 9999
 )
+
+var errInvalidStorageName = pkgerrors.New("invalid broker storage name")
 
 func createMetaConfigMap(cr *undermoonv1alpha1.Undermoon, initData string) *corev1.ConfigMap {
 	undermoonName := cr.ObjectMeta.Name
@@ -73,4 +77,23 @@ func MetaSecretName(undermoonName string) string {
 
 func genBrokerPassword() (string, error) {
 	return password.Generate(64, 10, 10, false, false)
+}
+
+func brokerStorageName(undermoonName, namespace string) string {
+	return fmt.Sprintf("%s@%s", undermoonName, namespace)
+}
+
+func extractStorageName(name string) (string, string, error) {
+	segs := strings.SplitN(name, "@", 2)
+	if len(segs) != 2 {
+		return "", "", pkgerrors.Errorf("invalid storage name: %s", name)
+	}
+
+	undermooName := segs[0]
+	namespace := segs[1]
+	if len(undermooName) == 0 || len(namespace) == 0 {
+		return "", "", pkgerrors.Errorf("invalid storage name: %s", name)
+	}
+
+	return undermooName, namespace, nil
 }
