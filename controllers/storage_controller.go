@@ -31,6 +31,11 @@ func (con *storageController) createStorage(reqLogger logr.Logger, cr *undermoon
 		service := createStoragePublicService(cr)
 		return con.getOrCreateStorageService(reqLogger, cr, service)
 	})
+	if err != nil {
+		reqLogger.Error(err, "failed to create storage public service")
+		return nil, nil, err
+	}
+
 	storageService, err := createServiceGuard(func() (*corev1.Service, error) {
 		service := createStorageService(cr)
 		return con.getOrCreateStorageService(reqLogger, cr, service)
@@ -175,16 +180,6 @@ func (con *storageController) getServiceEndpointsNum(storageService *corev1.Serv
 		return 0, err
 	}
 	return len(endpoints), nil
-}
-
-func (con *storageController) storageReady(storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) (bool, error) {
-	n, err := con.getServiceEndpointsNum(storageService)
-	if err != nil {
-		return false, err
-	}
-	serverProxyNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
-	ready := n >= int(serverProxyNum-1)
-	return ready, nil
 }
 
 func (con *storageController) storageAllReady(storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) (bool, error) {

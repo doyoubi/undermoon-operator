@@ -43,6 +43,7 @@ lint:
 	$(MAKE) vet
 	golint ./controllers...
 	golint ./api/v1alpha1...
+	golangci-lint run
 	# Helm Charts development:
 	helm lint helm/undermoon-operator --strict
 	helm lint helm/undermoon-cluster --strict

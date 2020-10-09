@@ -20,8 +20,6 @@ const (
 	metaServicePort = 9999
 )
 
-var errInvalidStorageName = pkgerrors.New("invalid broker storage name")
-
 func createMetaConfigMap(cr *undermoonv1alpha1.Undermoon, initData string) *corev1.ConfigMap {
 	undermoonName := cr.ObjectMeta.Name
 
@@ -69,7 +67,7 @@ func createMetaSecret(cr *undermoonv1alpha1.Undermoon, password string) *corev1.
 	}
 }
 
-// MetaSecretName defines the name for meta ConfigMap.
+// MetaSecretName defines the name for broker password.
 func MetaSecretName(undermoonName string) string {
 	return fmt.Sprintf("%s-sc", undermoonName)
 }

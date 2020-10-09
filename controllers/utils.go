@@ -30,7 +30,7 @@ func createServiceGuard(createFunc func() (*corev1.Service, error)) (*corev1.Ser
 	for i := 0; i != 3; i++ {
 		svc, err = createFunc()
 		if err == nil {
-			return svc, err
+			return svc, nil
 		}
 		if errors.IsAlreadyExists(err) {
 			continue
@@ -46,7 +46,7 @@ func createStatefulSetGuard(createFunc func() (*appsv1.StatefulSet, error)) (*ap
 	for i := 0; i != 3; i++ {
 		ss, err = createFunc()
 		if err == nil {
-			return ss, err
+			return ss, nil
 		}
 		if errors.IsAlreadyExists(err) {
 			continue
@@ -62,7 +62,7 @@ func createConfigMapGuard(createFunc func() (*corev1.ConfigMap, error)) (*corev1
 	for i := 0; i != 3; i++ {
 		cfg, err = createFunc()
 		if err == nil {
-			return cfg, err
+			return cfg, nil
 		}
 		if errors.IsAlreadyExists(err) {
 			continue
@@ -78,7 +78,7 @@ func createSecretGuard(createFunc func() (*corev1.Secret, error)) (*corev1.Secre
 	for i := 0; i != 3; i++ {
 		secret, err = createFunc()
 		if err == nil {
-			return secret, err
+			return secret, nil
 		}
 		if errors.IsAlreadyExists(err) {
 			continue

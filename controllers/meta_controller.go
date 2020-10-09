@@ -121,7 +121,7 @@ func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, master
 		return err
 	}
 
-	keepSet := make(map[string]bool, 0)
+	keepSet := make(map[string]bool)
 	// Need to include the failed but still in use proxies.
 	for _, proxyAddress := range genStorageStatefulSetAddrs(cr) {
 		keepSet[proxyAddress] = true
@@ -219,7 +219,7 @@ func (con *metaController) getClusterInfo(reqLogger logr.Logger, masterBrokerAdd
 	return info, nil
 }
 
-func (con *metaController) fixBrokerEpoch(reqLogger logr.Logger, masterBrokerAddress string, maxEpochFromServerProxy int64, cr *undermoonv1alpha1.Undermoon) error {
+func (con *metaController) checkBrokerEpoch(reqLogger logr.Logger, masterBrokerAddress string, maxEpochFromServerProxy int64, cr *undermoonv1alpha1.Undermoon) error {
 	epoch, err := con.client.getEpoch(masterBrokerAddress)
 	if err != nil {
 		reqLogger.Error(err, "failed to get global epoch from broker",
@@ -232,15 +232,12 @@ func (con *metaController) fixBrokerEpoch(reqLogger logr.Logger, masterBrokerAdd
 		return nil
 	}
 
-	err = con.client.fixEpoch(masterBrokerAddress)
-	if err != nil {
-		reqLogger.Error(err, "failed to fix broker global epoch",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
-		return err
-	}
+	err = pkgerrors.Errorf("invalid epoch: server proxy: %d broker: %d", maxEpochFromServerProxy, epoch)
+	reqLogger.Error(err, "invalid epoch",
+		"serverProxyMaxEpoch", maxEpochFromServerProxy,
+		"brokerEpoch", epoch)
 
-	return nil
+	return err
 }
 
 func (con *metaController) createMeta(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) error {
@@ -343,7 +340,7 @@ func (con *metaController) initOrUpdateExternalStore(reqLogger logr.Logger, unde
 	return con.updateExternalStore(reqLogger, undermoonName, namespace, store)
 }
 
-func (con *metaController) initExternalStore(reqLogger logr.Logger, undermoonName, namespace string, store   map[string]interface{}) error {
+func (con *metaController) initExternalStore(reqLogger logr.Logger, undermoonName, namespace string, store map[string]interface{}) error {
 	currStore, err := con.getExternalStore(reqLogger, undermoonName, namespace)
 	if err != nil {
 		return err
@@ -355,7 +352,7 @@ func (con *metaController) initExternalStore(reqLogger logr.Logger, undermoonNam
 	}
 
 	currStore.Store = store
-	return  con.updateExternalStore(reqLogger, undermoonName, namespace, currStore)
+	return con.updateExternalStore(reqLogger, undermoonName, namespace, currStore)
 }
 
 func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonName, namespace string, store *externalStore) error {
@@ -380,11 +377,11 @@ func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonN
 		return err
 	}
 
-	configmap.Data[metaStoreKey] = string(compressedData)
+	configmap.Data[metaStoreKey] = compressedData
 
 	err = con.r.client.Update(context.Background(), configmap)
 	if err != nil && errors.IsConflict(err) {
-		reqLogger.Error(err, "failed to update store in configmap: conflict")
+		reqLogger.Info("failed to update store in configmap: conflict")
 		return errExternalStoreConflict
 	} else if err != nil {
 		reqLogger.Error(err, "failed to update store in configmap")
@@ -400,6 +397,7 @@ func (con *metaController) getConfigMap(reqLogger logr.Logger, undermoonName, na
 	found := &corev1.ConfigMap{}
 	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: configmapName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Error(err, "failed to get configmap: not found")
 		return nil, err
 	} else if err != nil {
 		reqLogger.Error(err, "failed to get configmap")

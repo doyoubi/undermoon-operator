@@ -58,6 +58,12 @@ type UndermoonReconciler struct {
 	metaCon        *metaController
 }
 
+// RunHTTPServer starts the HTTP server.
+func (r *UndermoonReconciler) RunHTTPServer(ctx context.Context) error {
+	server := newMetaServer(r.metaCon, r.log)
+	return server.serve(ctx)
+}
+
 // +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
@@ -127,7 +133,7 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		return reconcile.Result{}, err
 	}
 
-	err = r.metaCon.fixBrokerEpoch(reqLogger, masterBrokerAddress, maxEpochFromServerProxy, instance)
+	err = r.metaCon.checkBrokerEpoch(reqLogger, masterBrokerAddress, maxEpochFromServerProxy, instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -208,7 +214,7 @@ type umResource struct {
 func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) (*umResource, error) {
 	err := r.metaCon.createMeta(reqLogger, instance)
 	if err != nil {
-		reqLogger.Error(err, "failed to create configmap and secret", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create configmap and secret")
 		return nil, err
 	}
 

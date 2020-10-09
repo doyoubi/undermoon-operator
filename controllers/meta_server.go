@@ -1,12 +1,17 @@
 package controllers
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-logr/logr"
+	pkgerrors "github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -16,7 +21,10 @@ const (
 	codeInvalidBasicAuth  = "INVALID_BASIC_AUTH"
 	codeInstanceNotFound  = "UNDERMOON_INSTANCE_NOT_FOUND"
 	codeIncorrectPassword = "INCORRECT_PASSWORD"
+	codeVersionConflict   = "VERSION_CONFLICT"
 )
+
+var errExit = pkgerrors.New("exit error")
 
 // This is defined by `undermoon` broker.
 type externalStore struct {
@@ -36,7 +44,7 @@ func newMetaServer(metaCon *metaController, reqLogger logr.Logger) *metaServer {
 	}
 }
 
-func (server *metaServer) serve() error {
+func (server *metaServer) serve(ctx context.Context) error {
 	r := gin.Default()
 	v1 := r.Group("/api/v1", server.basicAuth)
 
@@ -44,7 +52,25 @@ func (server *metaServer) serve() error {
 		v1.GET("/store/:storageName", server.handleGetMeta)
 		v1.PUT("/store/:storageName", server.handleUpdateMeta)
 	}
-	return r.Run()
+
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", metaServicePort),
+		Handler: r,
+	}
+
+	group, ctx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		return r.Run()
+	})
+	group.Go(func() error {
+		<-ctx.Done()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Fatal("Server forced to shutdown:", err)
+		}
+		return errExit
+	})
+
+	return group.Wait()
 }
 
 func (server *metaServer) basicAuth(c *gin.Context) {
@@ -167,7 +193,7 @@ func (server *metaServer) handleUpdateMeta(c *gin.Context) {
 	)
 
 	store := externalStore{}
-	err := c.ShouldBindJSON(store)
+	err := c.ShouldBindJSON(&store)
 	if err != nil {
 		reqLogger.Error(err, "failed to get json from request")
 		c.String(400, fmt.Sprintf("%s", err))
@@ -175,7 +201,10 @@ func (server *metaServer) handleUpdateMeta(c *gin.Context) {
 	}
 
 	err = server.metaCon.initOrUpdateExternalStore(reqLogger, undermoonName, namespace, &store)
-	if err != nil {
+	if err == errExternalStoreConflict {
+		c.String(409, codeVersionConflict)
+		return
+	} else if err != nil {
 		reqLogger.Error(err, "failed to update external store")
 		c.String(400, fmt.Sprintf("%s", err))
 		return
