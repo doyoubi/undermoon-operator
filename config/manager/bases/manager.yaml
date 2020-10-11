@@ -43,6 +43,9 @@ spec:
         - --enable-leader-election
         image: controller:latest
         name: manager
+        env:
+        - name: GIN_MODE
+          value: "release"
         resources:
           limits:
             cpu: 100m

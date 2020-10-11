@@ -32,6 +32,9 @@ spec:
         - --enable-leader-election
         command:
         - /manager
+        env:
+        - name: GIN_MODE
+          value: release
         image: '{{ .Values.image.operatorImage }}:{{ .Values.image.operatorImageTag }}'
         imagePullPolicy: '{{ .Values.image.operatorImagePullPolicy }}'
         name: manager

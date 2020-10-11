@@ -18,10 +18,11 @@ const (
 	ctxCrName    = "um-crName"
 	ctxNamespace = "um-namespace"
 
-	codeInvalidBasicAuth  = "INVALID_BASIC_AUTH"
-	codeInstanceNotFound  = "UNDERMOON_INSTANCE_NOT_FOUND"
-	codeIncorrectPassword = "INCORRECT_PASSWORD"
-	codeVersionConflict   = "VERSION_CONFLICT"
+	codeInvalidBasicAuth    = "INVALID_BASIC_AUTH"
+	codeInvalidStorageName  = "INVALID_STORAGE_NAME"
+	codeStorageNameNotFound = "UNDERMOON_STORAGE_NAME_NOT_FOUND"
+	codeIncorrectPassword   = "INCORRECT_PASSWORD"
+	codeVersionConflict     = "VERSION_CONFLICT"
 )
 
 var errExit = pkgerrors.New("exit error")
@@ -45,12 +46,16 @@ func newMetaServer(metaCon *metaController, reqLogger logr.Logger) *metaServer {
 }
 
 func (server *metaServer) serve(ctx context.Context) error {
-	r := gin.Default()
-	v1 := r.Group("/api/v1", server.basicAuth)
+	r := gin.New()
+	r.Use(gin.Recovery())
+	v1 := r.Group("/api/v1")
 
 	{
-		v1.GET("/store/:storageName", server.handleGetMeta)
-		v1.PUT("/store/:storageName", server.handleUpdateMeta)
+		query := v1.Group("/store", server.extractCtx)
+		query.GET("/:storageName", server.handleGetMeta)
+		update := v1.Group("/store", server.extractCtx, server.basicAuth)
+		update.Use(gin.Logger())
+		update.PUT("/:storageName", server.handleUpdateMeta)
 	}
 
 	srv := &http.Server{
@@ -77,10 +82,35 @@ func (server *metaServer) serve(ctx context.Context) error {
 	return group.Wait()
 }
 
-func (server *metaServer) basicAuth(c *gin.Context) {
+func (server *metaServer) extractCtx(c *gin.Context) {
 	storageName := c.Param("storageName")
 	if len(storageName) == 0 {
-		c.String(404, codeInstanceNotFound)
+		c.String(404, codeStorageNameNotFound)
+		return
+	}
+
+	undermoonName, namespace, err := extractStorageName(storageName)
+	if err != nil {
+		server.reqLogger.Info("invalid basic auth: invalid username")
+		c.String(400, codeInvalidStorageName)
+		return
+	}
+
+	c.Set(ctxCrName, undermoonName)
+	c.Set(ctxNamespace, namespace)
+
+	c.Next()
+}
+
+func (server *metaServer) basicAuth(c *gin.Context) {
+	undermoonName, namespace, ok := server.retrieveCtx(c)
+	if !ok {
+		return
+	}
+
+	storageName := c.Param("storageName")
+	if len(storageName) == 0 {
+		c.String(404, codeStorageNameNotFound)
 		return
 	}
 
@@ -114,15 +144,9 @@ func (server *metaServer) basicAuth(c *gin.Context) {
 		return
 	}
 
-	undermoonName, namespace, err := extractStorageName(username)
-	if err != nil {
-		server.reqLogger.Info("invalid basic auth: invalid username")
-		c.String(401, codeInvalidBasicAuth)
-		return
-	}
-
 	reqLogger := server.reqLogger.WithValues(
 		"UndermoonName", undermoonName,
+		"Namespace", namespace,
 	)
 	correct, err := server.metaCon.checkMetaSecret(reqLogger, undermoonName, namespace, password)
 	if err != nil {
@@ -134,9 +158,6 @@ func (server *metaServer) basicAuth(c *gin.Context) {
 		c.String(401, codeIncorrectPassword)
 		return
 	}
-
-	c.Set(ctxCrName, undermoonName)
-	c.Set(ctxNamespace, namespace)
 
 	c.Next()
 }
