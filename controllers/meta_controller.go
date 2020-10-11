@@ -61,6 +61,9 @@ func (con *metaController) reconcileMeta(reqLogger logr.Logger, masterBrokerAddr
 func (con *metaController) setBrokerReplicas(reqLogger logr.Logger, masterBrokerAddress string, replicaAddresses []string, cr *undermoonv1alpha1.Undermoon) error {
 	err := con.client.setBrokerReplicas(masterBrokerAddress, replicaAddresses)
 	if err != nil {
+		if err == errRetryReconciliation {
+			return err
+		}
 		reqLogger.Error(err, "failed to set broker replicas", "masterBrokerAddress", masterBrokerAddress, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
 		return err
 	}
@@ -68,6 +71,9 @@ func (con *metaController) setBrokerReplicas(reqLogger logr.Logger, masterBroker
 	for _, replicaAddress := range replicaAddresses {
 		err := con.client.setBrokerReplicas(replicaAddress, []string{})
 		if err != nil {
+			if err == errRetryReconciliation {
+				return err
+			}
 			reqLogger.Error(err, "failed to set broker replicas", "replicaBrokerAddress", replicaAddress, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
 			return err
 		}
@@ -109,6 +115,9 @@ func (con *metaController) registerServerProxies(reqLogger logr.Logger, masterBr
 	for _, proxy := range proxies {
 		err := con.client.registerServerProxy(masterBrokerAddress, proxy)
 		if err != nil {
+			if err == errRetryReconciliation {
+				return err
+			}
 			reqLogger.Error(err, "failed to register server proxy", "proxy", proxy, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
 		}
 	}
@@ -144,6 +153,9 @@ func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, master
 	for _, deleteAddress := range deleteList {
 		err := con.client.deregisterServerProxy(masterBrokerAddress, deleteAddress)
 		if err != nil {
+			if err == errRetryReconciliation {
+				return err
+			}
 			reqLogger.Error(err, "failed to deregister server proxy",
 				"proxyAddress", deleteAddress,
 				"Name", cr.ObjectMeta.Name,
@@ -169,6 +181,9 @@ func (con *metaController) createCluster(reqLogger logr.Logger, masterBrokerAddr
 
 	err = con.client.createCluster(masterBrokerAddress, cr.Spec.ClusterName, int(cr.Spec.ChunkNumber))
 	if err != nil {
+		if err == errRetryReconciliation {
+			return err
+		}
 		reqLogger.Error(err, "failed to create cluster",
 			"Name", cr.ObjectMeta.Name,
 			"ClusterName", cr.Spec.ClusterName)
@@ -187,6 +202,9 @@ func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerA
 		if err == errMigrationRunning {
 			return errRetryReconciliation
 		}
+		if err == errRetryReconciliation {
+			return err
+		}
 		reqLogger.Error(err, "failed to scale nodes",
 			"Name", cr.ObjectMeta.Name,
 			"ClusterName", cr.Spec.ClusterName)
@@ -197,6 +215,9 @@ func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerA
 	if err != nil {
 		if err == errMigrationRunning {
 			return errRetryReconciliation
+		}
+		if err == errRetryReconciliation {
+			return err
 		}
 		reqLogger.Error(err, "failed to remove free nodes",
 			"Name", cr.ObjectMeta.Name,
@@ -220,27 +241,6 @@ func (con *metaController) getClusterInfo(reqLogger logr.Logger, masterBrokerAdd
 		return nil, err
 	}
 	return info, nil
-}
-
-func (con *metaController) checkBrokerEpoch(reqLogger logr.Logger, masterBrokerAddress string, maxEpochFromServerProxy int64, cr *undermoonv1alpha1.Undermoon) error {
-	epoch, err := con.client.getEpoch(masterBrokerAddress)
-	if err != nil {
-		reqLogger.Error(err, "failed to get global epoch from broker",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
-		return err
-	}
-
-	if epoch >= maxEpochFromServerProxy {
-		return nil
-	}
-
-	err = pkgerrors.Errorf("invalid epoch: server proxy: %d broker: %d", maxEpochFromServerProxy, epoch)
-	reqLogger.Error(err, "invalid epoch",
-		"serverProxyMaxEpoch", maxEpochFromServerProxy,
-		"brokerEpoch", epoch)
-
-	return err
 }
 
 func (con *metaController) createMeta(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) error {

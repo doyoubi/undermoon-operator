@@ -128,16 +128,6 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		return reconcile.Result{}, err
 	}
 
-	maxEpochFromServerProxy, err := r.storageCon.getMaxEpoch(reqLogger, resource.storageService, instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	err = r.metaCon.checkBrokerEpoch(reqLogger, masterBrokerAddress, maxEpochFromServerProxy, instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
 	proxies, err := r.storageCon.getServerProxies(reqLogger, resource.storageService, instance)
 	if err != nil {
 		return reconcile.Result{}, err

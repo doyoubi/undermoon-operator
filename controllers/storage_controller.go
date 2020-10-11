@@ -17,13 +17,11 @@ import (
 )
 
 type storageController struct {
-	r         *UndermoonReconciler
-	proxyPool *serverProxyClientPool
+	r *UndermoonReconciler
 }
 
 func newStorageController(r *UndermoonReconciler) *storageController {
-	pool := newServerProxyClientPool()
-	return &storageController{r: r, proxyPool: pool}
+	return &storageController{r: r}
 }
 
 func (con *storageController) createStorage(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
@@ -234,37 +232,6 @@ func (con *storageController) getServerProxies(reqLogger logr.Logger, storageSer
 	}
 
 	return proxies, nil
-}
-
-func (con *storageController) getMaxEpoch(reqLogger logr.Logger, storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) (int64, error) {
-	endpoints, err := getEndpoints(con.r.client, storageService.Name, storageService.Namespace)
-	if err != nil {
-		reqLogger.Error(err, "Failed to get endpoints of server proxies", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		return 0, err
-	}
-
-	// Filter the proxies being deleted
-	sets := make(map[string]bool)
-	for _, address := range genStorageStatefulSetAddrs(cr) {
-		sets[address] = true
-	}
-
-	var maxEpoch int64 = 0
-	for _, endpoint := range endpoints {
-		address := genStorageAddressFromName(endpoint.Hostname, cr)
-		if _, ok := sets[address]; !ok {
-			continue
-		}
-		epoch, err := con.proxyPool.getEpoch(address)
-		if err != nil {
-			reqLogger.Error(err, "Failed to get epoch from server proxy", "proxyAddress", address, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
-		}
-		if epoch > maxEpoch {
-			maxEpoch = epoch
-		}
-	}
-
-	return maxEpoch, nil
 }
 
 func (con *storageController) triggerStatefulSetRollingUpdate(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storageStatefulSet *appsv1.StatefulSet, storageService *corev1.Service) error {
