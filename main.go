@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
@@ -67,11 +68,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (controllers.NewUndermoonReconciler(
+	reconciler := controllers.NewUndermoonReconciler(
 		mgr.GetClient(),
 		ctrl.Log.WithName("controllers").WithName("Undermoon"),
 		mgr.GetScheme(),
-	)).SetupWithManager(mgr); err != nil {
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		if err := reconciler.RunHTTPServer(ctx); err != nil {
+			ctrl.Log.Error(err, "http server exited")
+		}
+	}()
+
+	if err = reconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Undermoon")
 		os.Exit(1)
 	}

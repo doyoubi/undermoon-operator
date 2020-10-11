@@ -4,25 +4,37 @@
 # kind: Namespace
 # metadata:
 #   labels:
-#     control-plane: controller-manager
+#     control-plane: undermoon-operator
 #   name: system
 # ---
+# This Service is used to expose an storage api to broker.
+apiVersion: v1
+kind: Service
+metadata:
+  name: undermoon-operator-storage
+spec:
+  selector:
+    control-plane: undermoon-operator
+  ports:
+    - protocol: TCP
+      port: 9999
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
+  name: undermoon-operator
   namespace: system
   labels:
-    control-plane: controller-manager
+    control-plane: undermoon-operator
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: undermoon-operator
   replicas: 1
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: undermoon-operator
     spec:
       containers:
       - command:
@@ -31,6 +43,9 @@ spec:
         - --enable-leader-election
         image: controller:latest
         name: manager
+        env:
+        - name: GIN_MODE
+          value: "release"
         resources:
           limits:
             cpu: 100m

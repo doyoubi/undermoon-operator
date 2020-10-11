@@ -1,6 +1,5 @@
 /*
 
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -43,7 +42,7 @@ func NewUndermoonReconciler(client client.Client, log logr.Logger, scheme *runti
 	r.brokerCon = newBrokerController(r)
 	r.coordinatorCon = newCoordinatorController(r)
 	r.storageCon = newStorageController(r)
-	r.metaCon = newMetaController()
+	r.metaCon = newMetaController(r)
 	return r
 }
 
@@ -59,15 +58,26 @@ type UndermoonReconciler struct {
 	metaCon        *metaController
 }
 
+// RunHTTPServer starts the HTTP server.
+func (r *UndermoonReconciler) RunHTTPServer(ctx context.Context) error {
+	server := newMetaServer(r.metaCon, r.log)
+	return server.serve(ctx)
+}
+
 // +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=undermoon.doyoubi.mydomain,resources=undermoons/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=endpoints,verbs=get;list;watch
 
 // Reconcile implements Reconciler
 func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := r.log.WithValues(
+		"Request.Namespace", request.Namespace,
+		"Request.Name", request.Name,
+	)
 	reqLogger.Info("Reconciling Undermoon")
 
 	// Fetch the Undermoon instance
@@ -83,6 +93,11 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	reqLogger = reqLogger.WithValues(
+		"UndermoonName", instance.ObjectMeta.Name,
+		"ClusterName", instance.Spec.ClusterName,
+	)
 
 	resource, err := r.createResources(reqLogger, instance)
 	if err != nil {
@@ -109,16 +124,6 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 	}
 
 	err = r.coordinatorCon.configSetBroker(reqLogger, instance, resource.coordinatorService, masterBrokerAddress)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	maxEpochFromServerProxy, err := r.storageCon.getMaxEpoch(reqLogger, resource.storageService, instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	err = r.metaCon.fixBrokerEpoch(reqLogger, masterBrokerAddress, maxEpochFromServerProxy, instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -197,6 +202,12 @@ type umResource struct {
 }
 
 func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) (*umResource, error) {
+	err := r.metaCon.createMeta(reqLogger, instance)
+	if err != nil {
+		reqLogger.Error(err, "failed to create configmap and secret")
+		return nil, err
+	}
+
 	brokerStatefulSet, brokerService, err := r.brokerCon.createBroker(reqLogger, instance)
 	if err != nil {
 		reqLogger.Error(err, "failed to create broker", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)

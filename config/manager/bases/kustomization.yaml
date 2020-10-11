@@ -4,4 +4,5 @@ kind: Kustomization
 resources:
 - manager.yaml
 
-namePrefix: undermoon-operator-
+# The name is already undermoon-operator
+# namePrefix: undermoon-operator-

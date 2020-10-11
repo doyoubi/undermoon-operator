@@ -81,6 +81,11 @@ Create the Undermoon CRD:
 > make debug-start
 ```
 
+Or just:
+```
+> make debug-install
+```
+
 See the pods we created:
 ```
 > kubectl get pods

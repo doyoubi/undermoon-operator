@@ -51,9 +51,11 @@ func BrokerServiceName(undermoonName string) string {
 }
 
 func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSet {
+	undermoonName := cr.ObjectMeta.Name
+
 	labels := map[string]string{
 		"undermoonService":     undermoonServiceTypeBroker,
-		"undermoonName":        cr.ObjectMeta.Name,
+		"undermoonName":        undermoonName,
 		"undermoonClusterName": cr.Spec.ClusterName,
 	}
 
@@ -109,6 +111,33 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 		{
 			Name:  "UNDERMOON_DEBUG",
 			Value: "false",
+		},
+		{
+			Name:  "UNDERMOON_STORAGE_TYPE",
+			Value: "http",
+		},
+		{
+			Name:  "UNDERMOON_STORAGE_NAME",
+			Value: brokerStorageName(undermoonName, cr.Namespace),
+		},
+		{
+			Name: "UNDERMOON_STORAGE_PASSWORD",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: MetaSecretName(undermoonName),
+					},
+					Key: metaPasswordKey,
+				},
+			},
+		},
+		{
+			Name:  "UNDERMOON_HTTP_STORAGE_ADDRESS",
+			Value: fmt.Sprintf("%s:%d", metaServiceHost, metaServicePort),
+		},
+		{
+			Name:  "UNDERMOON_REFRESH_INTERVAL",
+			Value: "5",
 		},
 	}
 	container := corev1.Container{
@@ -187,27 +216,9 @@ func BrokerStatefulSetName(undermoonName string) string {
 	return fmt.Sprintf("%s-bk-ss", undermoonName)
 }
 
-func genBrokerNames(undermoonName string) []string {
-	names := []string{}
-	for i := int32(0); i != brokerNum; i++ {
-		name := fmt.Sprintf("%s-%d", BrokerStatefulSetName(undermoonName), i)
-		names = append(names, name)
-	}
-	return names
-}
-
 func genBrokerFQDN(podName, undermoonName, namespace string) string {
 	// pod-specific-string.serviceName.default.svc.cluster.local
 	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", podName, BrokerServiceName(undermoonName), namespace)
-}
-
-func genBrokerStatefulSetAddrs(cr *undermoonv1alpha1.Undermoon) []string {
-	addrs := []string{}
-	for _, name := range genBrokerNames(cr.ObjectMeta.Name) {
-		addr := genBrokerAddressFromName(name, cr)
-		addrs = append(addrs, addr)
-	}
-	return addrs
 }
 
 func genBrokerAddressFromName(name string, cr *undermoonv1alpha1.Undermoon) string {

@@ -8,11 +8,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-const errStrAlreadyExists = "ALREADY_EXISTED"
-const errStrMigrationRunning = "MIGRATION_RUNNING"
-const errStrNoAvailableResource = "NO_AVAILABLE_RESOURCE"
-const errStrFreeNodeFound = "FREE_NODE_FOUND"
-const errStrFreeNodeNotFound = "FREE_NODE_NOT_FOUND"
+const (
+	errStrAlreadyExists       = "ALREADY_EXISTED"
+	errStrMigrationRunning    = "MIGRATION_RUNNING"
+	errStrNoAvailableResource = "NO_AVAILABLE_RESOURCE"
+	errStrFreeNodeFound       = "FREE_NODE_FOUND"
+	errStrFreeNodeNotFound    = "FREE_NODE_NOT_FOUND"
+	errStrRetry               = "RETRY"
+)
 
 var errMigrationRunning = errors.New("MIGRATION_RUNNING")
 var errFreeNodeFound = errors.New("FREE_NODE_FOUND")
@@ -33,13 +36,9 @@ func newBrokerClient() *brokerClient {
 	}
 }
 
-type brokerConfig struct {
-	ReplicaAddresses []string `json:"replica_addresses"`
-}
-
 func (client *brokerClient) getReplicaAddresses(address string) ([]string, error) {
 	url := fmt.Sprintf("http://%s/api/v2/config", address)
-	payload := brokerConfig{}
+	payload := brokerConfigPayload{}
 	res, err := client.httpClient.R().SetResult(payload).Get(url)
 	if err != nil {
 		return nil, err
@@ -49,7 +48,7 @@ func (client *brokerClient) getReplicaAddresses(address string) ([]string, error
 		return nil, errors.Errorf("Failed to get replica addresses from broker: invalid status code %d", res.StatusCode())
 	}
 
-	resPayload, ok := res.Result().(*brokerConfig)
+	resPayload, ok := res.Result().(*brokerConfigPayload)
 	if !ok {
 		content := res.Body()
 		return nil, errors.Errorf("Failed to get replica addresses from broker: invalid response payload %s", string(content))
@@ -57,24 +56,6 @@ func (client *brokerClient) getReplicaAddresses(address string) ([]string, error
 
 	addresses := resPayload.ReplicaAddresses
 	return addresses, nil
-}
-
-func (client *brokerClient) storeReplicaAddresses(address string, replicaAddresses []string) error {
-	payload := &brokerConfig{
-		ReplicaAddresses: replicaAddresses,
-	}
-	url := fmt.Sprintf("http://%s/api/v2/config", address)
-	res, err := client.httpClient.R().
-		SetBody(payload).
-		Put(url)
-	if err != nil {
-		return err
-	}
-
-	if res.StatusCode() != 200 {
-		return errors.Errorf("Failed to store replica addresses to broker: invalid status code %d", res.StatusCode())
-	}
-	return nil
 }
 
 func (client *brokerClient) getEpoch(address string) (int64, error) {
@@ -150,6 +131,13 @@ func (client *brokerClient) setBrokerReplicas(address string, replicaAddresses [
 		return err
 	}
 
+	if res.StatusCode() == 409 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
+	}
+
 	if res.StatusCode() != 200 {
 		content := res.Body()
 		return errors.Errorf("Failed to register server proxy: invalid status code %d: %s", res.StatusCode(), string(content))
@@ -165,6 +153,13 @@ func (client *brokerClient) registerServerProxy(address string, proxy serverProx
 		return err
 	}
 
+	if res.StatusCode() == 409 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
+	}
+
 	if res.StatusCode() != 200 && res.StatusCode() != 409 {
 		content := res.Body()
 		return errors.Errorf("Failed to register server proxy: invalid status code %d: %s", res.StatusCode(), string(content))
@@ -178,6 +173,13 @@ func (client *brokerClient) deregisterServerProxy(address string, proxyAddress s
 	res, err := client.httpClient.R().Delete(url)
 	if err != nil {
 		return err
+	}
+
+	if res.StatusCode() == 409 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
 	}
 
 	if res.StatusCode() != 200 && res.StatusCode() != 404 {
@@ -213,6 +215,9 @@ func (client *brokerClient) createCluster(address, clusterName string, chunkNumb
 		}
 		if ok && response.Error == errStrAlreadyExists {
 			return nil
+		}
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
 		}
 	}
 
@@ -270,6 +275,9 @@ func (client *brokerClient) scaleNodes(address, clusterName string, chunkNumber 
 		if ok && response.Error == errStrFreeNodeFound {
 			return errFreeNodeFound
 		}
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
 	}
 
 	content := res.Body()
@@ -294,6 +302,9 @@ func (client *brokerClient) removeFreeNodes(address, clusterName string) error {
 		}
 		if ok && response.Error == errStrFreeNodeNotFound {
 			return nil
+		}
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
 		}
 	}
 
@@ -332,19 +343,4 @@ func (client *brokerClient) getClusterInfo(address, clusterName string) (*cluste
 
 	content := res.Body()
 	return nil, errors.Errorf("Failed to get cluster info: invalid status code %d: %s", res.StatusCode(), string(content))
-}
-
-func (client *brokerClient) fixEpoch(address string) error {
-	url := fmt.Sprintf("http://%s/api/v2/epoch/recovery", address)
-	res, err := client.httpClient.R().SetResult(&clusterInfo{}).SetError(&errorResponse{}).Put(url)
-	if err != nil {
-		return err
-	}
-
-	if res.StatusCode() == 200 {
-		return nil
-	}
-
-	content := res.Body()
-	return errors.Errorf("Failed to get cluster info: invalid status code %d: %s", res.StatusCode(), string(content))
 }

@@ -1,7 +1,11 @@
 package controllers
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
+	"io/ioutil"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -26,7 +30,7 @@ func createServiceGuard(createFunc func() (*corev1.Service, error)) (*corev1.Ser
 	for i := 0; i != 3; i++ {
 		svc, err = createFunc()
 		if err == nil {
-			return svc, err
+			return svc, nil
 		}
 		if errors.IsAlreadyExists(err) {
 			continue
@@ -42,7 +46,39 @@ func createStatefulSetGuard(createFunc func() (*appsv1.StatefulSet, error)) (*ap
 	for i := 0; i != 3; i++ {
 		ss, err = createFunc()
 		if err == nil {
-			return ss, err
+			return ss, nil
+		}
+		if errors.IsAlreadyExists(err) {
+			continue
+		}
+		return nil, err
+	}
+	return nil, err
+}
+
+func createConfigMapGuard(createFunc func() (*corev1.ConfigMap, error)) (*corev1.ConfigMap, error) {
+	var cfg *corev1.ConfigMap
+	var err error
+	for i := 0; i != 3; i++ {
+		cfg, err = createFunc()
+		if err == nil {
+			return cfg, nil
+		}
+		if errors.IsAlreadyExists(err) {
+			continue
+		}
+		return nil, err
+	}
+	return nil, err
+}
+
+func createSecretGuard(createFunc func() (*corev1.Secret, error)) (*corev1.Secret, error) {
+	var secret *corev1.Secret
+	var err error
+	for i := 0; i != 3; i++ {
+		secret, err = createFunc()
+		if err == nil {
+			return secret, nil
 		}
 		if errors.IsAlreadyExists(err) {
 			continue
@@ -187,4 +223,43 @@ func resourceListEqual(lhs, rhs corev1.ResourceList) bool {
 	}
 
 	return true
+}
+
+func compressString(origin string) (string, error) {
+	var b bytes.Buffer
+	w, err := gzip.NewWriterLevel(&b, gzip.BestCompression)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = w.Write([]byte(origin))
+	if err != nil {
+		return "", err
+	}
+	// Need to close it to flush data to bytes.Buffer.
+	w.Close()
+
+	data := base64.StdEncoding.EncodeToString(b.Bytes())
+	return data, nil
+}
+
+func decompressString(data string) (string, error) {
+	compressed, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		return "", err
+	}
+
+	r, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		return "", err
+	}
+	// Don't need to close on error.
+	defer r.Close()
+
+	origin, err := ioutil.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+
+	return string(origin), nil
 }

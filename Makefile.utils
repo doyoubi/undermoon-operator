@@ -43,10 +43,14 @@ lint:
 	$(MAKE) vet
 	golint ./controllers...
 	golint ./api/v1alpha1...
+	golangci-lint run
 	# Helm Charts development:
 	helm lint helm/undermoon-operator --strict
 	helm lint helm/undermoon-cluster --strict
 	helm lint chaostest/undermoon-checker --strict
+
+unittest:
+	go test ./... -run '^(TestUnit)'
 
 lint-chaostest-script:
 	# pip install -r chaostest/ctrl_requirements.txt
@@ -88,6 +92,9 @@ debug-build:
 	$(MAKE) docker-build UM_OP_DEBUG=1
 	$(MAKE) docker-push UM_OP_DEBUG=1
 
+debug-install:
+	$(MAKE) install-helm-package UM_OP_DEBUG=1
+
 debug-run:
 	$(MAKE) install UM_OP_DEBUG=1
 	$(MAKE) deploy UM_OP_DEBUG=1
@@ -100,7 +107,7 @@ debug-start:
 
 debug-stop:
 	kubectl delete undermoon --all || true
-	kubectl delete deployments,service -l control-plane=controller-manager || true
+	kubectl delete deployments,service -l control-plane=undermoon-operator || true
 	kubectl delete role,rolebinding --all || true
 	$(MAKE) uninstall
 
