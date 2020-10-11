@@ -42,7 +42,7 @@ func NewUndermoonReconciler(client client.Client, log logr.Logger, scheme *runti
 	r.brokerCon = newBrokerController(r)
 	r.coordinatorCon = newCoordinatorController(r)
 	r.storageCon = newStorageController(r)
-	r.metaCon = newMetaController()
+	r.metaCon = newMetaController(r)
 	return r
 }
 

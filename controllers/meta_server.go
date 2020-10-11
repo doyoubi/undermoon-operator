@@ -60,7 +60,11 @@ func (server *metaServer) serve(ctx context.Context) error {
 
 	group, ctx := errgroup.WithContext(ctx)
 	group.Go(func() error {
-		return r.Run()
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("meta server listen err: %s\n", err)
+			return err
+		}
+		return nil
 	})
 	group.Go(func() error {
 		<-ctx.Done()

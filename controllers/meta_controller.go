@@ -22,9 +22,12 @@ type metaController struct {
 	client *brokerClient
 }
 
-func newMetaController() *metaController {
+func newMetaController(r *UndermoonReconciler) *metaController {
 	client := newBrokerClient()
-	return &metaController{client: client}
+	return &metaController{
+		r:      r,
+		client: client,
+	}
 }
 
 func (con *metaController) reconcileMeta(reqLogger logr.Logger, masterBrokerAddress string, replicaAddresses []string, proxies []serverProxyMeta, cr *undermoonv1alpha1.Undermoon, storageAllReady bool) (*clusterInfo, error) {

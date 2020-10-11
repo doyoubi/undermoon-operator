@@ -92,6 +92,9 @@ debug-build:
 	$(MAKE) docker-build UM_OP_DEBUG=1
 	$(MAKE) docker-push UM_OP_DEBUG=1
 
+debug-install:
+	$(MAKE) install-helm-package UM_OP_DEBUG=1
+
 debug-run:
 	$(MAKE) install UM_OP_DEBUG=1
 	$(MAKE) deploy UM_OP_DEBUG=1
