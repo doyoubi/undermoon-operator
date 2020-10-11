@@ -8,11 +8,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-const errStrAlreadyExists = "ALREADY_EXISTED"
-const errStrMigrationRunning = "MIGRATION_RUNNING"
-const errStrNoAvailableResource = "NO_AVAILABLE_RESOURCE"
-const errStrFreeNodeFound = "FREE_NODE_FOUND"
-const errStrFreeNodeNotFound = "FREE_NODE_NOT_FOUND"
+const (
+	errStrAlreadyExists       = "ALREADY_EXISTED"
+	errStrMigrationRunning    = "MIGRATION_RUNNING"
+	errStrNoAvailableResource = "NO_AVAILABLE_RESOURCE"
+	errStrFreeNodeFound       = "FREE_NODE_FOUND"
+	errStrFreeNodeNotFound    = "FREE_NODE_NOT_FOUND"
+	errStrRetry               = "RETRY"
+)
 
 var errMigrationRunning = errors.New("MIGRATION_RUNNING")
 var errFreeNodeFound = errors.New("FREE_NODE_FOUND")
@@ -128,6 +131,13 @@ func (client *brokerClient) setBrokerReplicas(address string, replicaAddresses [
 		return err
 	}
 
+	if res.StatusCode() == 409 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
+	}
+
 	if res.StatusCode() != 200 {
 		content := res.Body()
 		return errors.Errorf("Failed to register server proxy: invalid status code %d: %s", res.StatusCode(), string(content))
@@ -143,6 +153,13 @@ func (client *brokerClient) registerServerProxy(address string, proxy serverProx
 		return err
 	}
 
+	if res.StatusCode() == 409 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
+	}
+
 	if res.StatusCode() != 200 && res.StatusCode() != 409 {
 		content := res.Body()
 		return errors.Errorf("Failed to register server proxy: invalid status code %d: %s", res.StatusCode(), string(content))
@@ -156,6 +173,13 @@ func (client *brokerClient) deregisterServerProxy(address string, proxyAddress s
 	res, err := client.httpClient.R().Delete(url)
 	if err != nil {
 		return err
+	}
+
+	if res.StatusCode() == 409 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
 	}
 
 	if res.StatusCode() != 200 && res.StatusCode() != 404 {
@@ -191,6 +215,9 @@ func (client *brokerClient) createCluster(address, clusterName string, chunkNumb
 		}
 		if ok && response.Error == errStrAlreadyExists {
 			return nil
+		}
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
 		}
 	}
 
@@ -248,6 +275,9 @@ func (client *brokerClient) scaleNodes(address, clusterName string, chunkNumber 
 		if ok && response.Error == errStrFreeNodeFound {
 			return errFreeNodeFound
 		}
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
 	}
 
 	content := res.Body()
@@ -272,6 +302,9 @@ func (client *brokerClient) removeFreeNodes(address, clusterName string) error {
 		}
 		if ok && response.Error == errStrFreeNodeNotFound {
 			return nil
+		}
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
 		}
 	}
 
