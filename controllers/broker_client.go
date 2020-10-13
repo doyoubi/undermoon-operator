@@ -15,10 +15,14 @@ const (
 	errStrFreeNodeFound       = "FREE_NODE_FOUND"
 	errStrFreeNodeNotFound    = "FREE_NODE_NOT_FOUND"
 	errStrRetry               = "RETRY"
+	errStrExternalTimeout     = "EXTERNAL_TIMEOUT"
 )
 
-var errMigrationRunning = errors.New("MIGRATION_RUNNING")
-var errFreeNodeFound = errors.New("FREE_NODE_FOUND")
+var (
+	errMigrationRunning = errors.New("MIGRATION_RUNNING")
+	errFreeNodeFound    = errors.New("FREE_NODE_FOUND")
+	errExternalTimeout  = errors.New("EXTERNAL_TIMEOUT")
+)
 
 type errorResponse struct {
 	Error string `json:"error"`
@@ -44,6 +48,13 @@ func (client *brokerClient) getReplicaAddresses(address string) ([]string, error
 		return nil, err
 	}
 
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return nil, errExternalTimeout
+		}
+	}
+
 	if res.StatusCode() != 200 {
 		return nil, errors.Errorf("Failed to get replica addresses from broker: invalid status code %d", res.StatusCode())
 	}
@@ -63,6 +74,13 @@ func (client *brokerClient) getEpoch(address string) (int64, error) {
 	res, err := client.httpClient.R().Get(url)
 	if err != nil {
 		return 0, err
+	}
+
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return 0, errExternalTimeout
+		}
 	}
 
 	if res.StatusCode() != 200 {
@@ -87,6 +105,13 @@ func (client *brokerClient) getServerProxies(address string) ([]string, error) {
 	res, err := client.httpClient.R().SetResult(&queryServerProxyResponse{}).Get(url)
 	if err != nil {
 		return nil, err
+	}
+
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return nil, errExternalTimeout
+		}
 	}
 
 	if res.StatusCode() != 200 {
@@ -131,6 +156,13 @@ func (client *brokerClient) setBrokerReplicas(address string, replicaAddresses [
 		return err
 	}
 
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return errExternalTimeout
+		}
+	}
+
 	if res.StatusCode() == 409 {
 		response, ok := res.Error().(*errorResponse)
 		if ok && response.Error == errStrRetry {
@@ -153,6 +185,13 @@ func (client *brokerClient) registerServerProxy(address string, proxy serverProx
 		return err
 	}
 
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return errExternalTimeout
+		}
+	}
+
 	if res.StatusCode() == 409 {
 		response, ok := res.Error().(*errorResponse)
 		if ok && response.Error == errStrRetry {
@@ -173,6 +212,13 @@ func (client *brokerClient) deregisterServerProxy(address string, proxyAddress s
 	res, err := client.httpClient.R().Delete(url)
 	if err != nil {
 		return err
+	}
+
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return errExternalTimeout
+		}
 	}
 
 	if res.StatusCode() == 409 {
@@ -208,6 +254,13 @@ func (client *brokerClient) createCluster(address, clusterName string, chunkNumb
 		return nil
 	}
 
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return errExternalTimeout
+		}
+	}
+
 	if res.StatusCode() == 409 {
 		response, ok := res.Error().(*errorResponse)
 		if ok && response.Error == errStrNoAvailableResource {
@@ -234,6 +287,13 @@ func (client *brokerClient) clusterExists(address, clusterName string) (bool, er
 	res, err := client.httpClient.R().SetResult(&queryClusterNamesPayload{}).Get(url)
 	if err != nil {
 		return false, err
+	}
+
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return false, errExternalTimeout
+		}
 	}
 
 	if res.StatusCode() != 200 {
@@ -267,6 +327,13 @@ func (client *brokerClient) scaleNodes(address, clusterName string, chunkNumber 
 		return nil
 	}
 
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return errExternalTimeout
+		}
+	}
+
 	if res.StatusCode() == 409 || res.StatusCode() == 400 {
 		response, ok := res.Error().(*errorResponse)
 		if ok && response.Error == errStrMigrationRunning {
@@ -293,6 +360,13 @@ func (client *brokerClient) removeFreeNodes(address, clusterName string) error {
 
 	if res.StatusCode() == 200 {
 		return nil
+	}
+
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return errExternalTimeout
+		}
 	}
 
 	if res.StatusCode() == 404 || res.StatusCode() == 409 {
@@ -332,6 +406,13 @@ func (client *brokerClient) getClusterInfo(address, clusterName string) (*cluste
 			return nil, errors.Errorf("failed to get cluster info, invalid content %s", res.Body())
 		}
 		return info, nil
+	}
+
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return nil, errExternalTimeout
+		}
 	}
 
 	if res.StatusCode() == 404 {
