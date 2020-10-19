@@ -372,6 +372,10 @@ func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonN
 	}
 
 	if configmap.ObjectMeta.ResourceVersion != store.Version {
+		reqLogger.Info("version pre-check conflict",
+			"requestedVersion", store.Version,
+			"currentVersion", configmap.ObjectMeta.ResourceVersion,
+		)
 		return errExternalStoreConflict
 	}
 
@@ -391,7 +395,8 @@ func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonN
 
 	err = con.r.client.Update(context.Background(), configmap)
 	if err != nil && errors.IsConflict(err) {
-		reqLogger.Info("failed to update store in configmap: conflict")
+		reqLogger.Info("failed to update store in configmap: conflict",
+			"requestedVersion", store.Version)
 		return errExternalStoreConflict
 	} else if err != nil {
 		reqLogger.Error(err, "failed to update store in configmap")
