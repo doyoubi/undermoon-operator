@@ -30,7 +30,14 @@ func newMetaController(r *UndermoonReconciler) *metaController {
 	}
 }
 
-func (con *metaController) reconcileMeta(reqLogger logr.Logger, masterBrokerAddress string, replicaAddresses []string, proxies []serverProxyMeta, cr *undermoonv1alpha1.Undermoon, storageAllReady bool) (*clusterInfo, error) {
+func (con *metaController) reconcileMeta(
+	reqLogger logr.Logger,
+	masterBrokerAddress string,
+	replicaAddresses []string,
+	proxies []serverProxyMeta,
+	cr *undermoonv1alpha1.Undermoon,
+	storageAllReady bool,
+) (*clusterInfo, error) {
 	err := con.setBrokerReplicas(reqLogger, masterBrokerAddress, replicaAddresses, cr)
 	if err != nil {
 		return nil, err
