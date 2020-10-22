@@ -39,7 +39,7 @@ func (con *storageController) createStorage(reqLogger logr.Logger, cr *undermoon
 		return con.getOrCreateStorageService(reqLogger, cr, service)
 	})
 	if err != nil {
-		reqLogger.Error(err, "failed to create storage service", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create storage service")
 		return nil, nil, err
 	}
 
@@ -47,7 +47,7 @@ func (con *storageController) createStorage(reqLogger logr.Logger, cr *undermoon
 		return con.getOrCreateStorageStatefulSet(reqLogger, cr)
 	})
 	if err != nil {
-		reqLogger.Error(err, "failed to create storage StatefulSet", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create storage StatefulSet")
 		return nil, nil, err
 	}
 
@@ -56,7 +56,7 @@ func (con *storageController) createStorage(reqLogger logr.Logger, cr *undermoon
 		err = con.updateStorageStatefulSet(reqLogger, cr, storage)
 		if err != nil {
 			if err != errRetryReconciliation {
-				reqLogger.Error(err, "failed to update storage StatefulSet", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+				reqLogger.Error(err, "failed to update storage StatefulSet")
 			}
 			return nil, nil, err
 		}
@@ -73,7 +73,7 @@ func (con *storageController) getOrCreateStorageService(reqLogger logr.Logger, c
 	found := &corev1.Service{}
 	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new storage service", "Namespace", service.Namespace, "Name", service.Name)
+		reqLogger.Info("Creating a new storage service", "Name", service.Name)
 		err = con.r.client.Create(context.TODO(), service)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
@@ -84,14 +84,14 @@ func (con *storageController) getOrCreateStorageService(reqLogger logr.Logger, c
 			return nil, err
 		}
 
-		reqLogger.Info("Successfully created a new storage service", "Namespace", service.Namespace, "Name", service.Name)
+		reqLogger.Info("Successfully created a new storage service", "Name", service.Name)
 		return service, nil
 	} else if err != nil {
 		reqLogger.Error(err, "failed to get storage service")
 		return nil, err
 	}
 
-	reqLogger.Info("Skip reconcile: storage service already exists", "Namespace", found.Namespace, "Name", found.Name)
+	reqLogger.Info("Skip reconcile: storage service already exists", "Name", found.Name)
 	return found, nil
 }
 
@@ -107,7 +107,7 @@ func (con *storageController) getOrCreateStorageStatefulSet(reqLogger logr.Logge
 	found := &appsv1.StatefulSet{}
 	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: storage.Name, Namespace: storage.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new storage StatefulSet", "Namespace", storage.Namespace, "Name", storage.Name)
+		reqLogger.Info("Creating a new storage StatefulSet", "Name", storage.Name)
 		err = con.r.client.Create(context.TODO(), storage)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
@@ -121,24 +121,24 @@ func (con *storageController) getOrCreateStorageStatefulSet(reqLogger logr.Logge
 		// StatefulSet created successfully - don't requeue
 		return storage, nil
 	} else if err != nil {
-		reqLogger.Error(err, "failed to get storage StatefulSet", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to get storage StatefulSet")
 		return nil, err
 	}
 
 	// storage already exists - don't requeue
-	reqLogger.Info("Skip reconcile: storage StatefulSet already exists", "Namespace", found.Namespace, "Name", found.Name)
+	reqLogger.Info("Skip reconcile: storage StatefulSet already exists", "Name", found.Name)
 	return found, nil
 }
 
 func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet, info *clusterInfo) error {
 	expectedNodeNumber := int(cr.Spec.ChunkNumber) * chunkNodeNumber
 	if info.NodeNumberWithSlots > expectedNodeNumber {
-		reqLogger.Info("Need to wait for slot migration to scale down storage", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Info("Need to wait for slot migration to scale down storage")
 		return errRetryReconciliation
 	}
 
 	if info.NodeNumberWithSlots < expectedNodeNumber {
-		reqLogger.Info("Need to scale up", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Info("Need to scale up")
 		return errRetryReconciliation
 	}
 
@@ -155,7 +155,7 @@ func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr
 
 	if len(storage.ObjectMeta.ResourceVersion) == 0 {
 		err := pkgerrors.Errorf("Empty ResourceVersion when updating storage statefulset replicas: %s", cr.ObjectMeta.Name)
-		reqLogger.Error(err, "failed to update storage statefulset. Empty ResourceVersion.", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update storage statefulset. Empty ResourceVersion.")
 		return err
 	}
 
@@ -165,7 +165,7 @@ func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr
 			reqLogger.Info("Conflict on updating storage StatefulSet Replicas. Try again.")
 			return errRetryReconciliation
 		}
-		reqLogger.Error(err, "failed to update storage StatefulSet", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update storage StatefulSet")
 		return err
 	}
 
@@ -212,7 +212,7 @@ func (con *storageController) storageAllReadyAndStable(storageService *corev1.Se
 func (con *storageController) getServerProxies(reqLogger logr.Logger, storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) ([]serverProxyMeta, error) {
 	endpoints, err := getEndpoints(con.r.client, storageService.Name, storageService.Namespace)
 	if err != nil {
-		reqLogger.Error(err, "Failed to get endpoints of server proxies", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to get endpoints of server proxies")
 		return nil, err
 	}
 
@@ -224,7 +224,7 @@ func (con *storageController) getServerProxies(reqLogger logr.Logger, storageSer
 		indexStr := hostname[strings.LastIndex(hostname, "-")+1:]
 		index, err := strconv.ParseInt(indexStr, 10, 64)
 		if err != nil {
-			reqLogger.Error(err, "failed to parse storage hostname", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+			reqLogger.Error(err, "failed to parse storage hostname")
 		}
 		address := genStorageFQDNFromName(hostname, cr)
 		proxy := newServerProxyMeta(address, address, cr.Spec.Port, int(index))
@@ -272,7 +272,7 @@ func (con *storageController) updateStatefulSetHelper(reqLogger logr.Logger, cr 
 			reqLogger.Info("Conflict on updating storage StatefulSet. Try again.")
 			return errRetryReconciliation
 		}
-		reqLogger.Error(err, "failed to update storage statefulset", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update storage statefulset")
 		return err
 	}
 	reqLogger.Info("Successfully update storage StatefulSet")

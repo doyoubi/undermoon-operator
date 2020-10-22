@@ -71,7 +71,7 @@ func (con *metaController) setBrokerReplicas(reqLogger logr.Logger, masterBroker
 		if err == errRetryReconciliation {
 			return err
 		}
-		reqLogger.Error(err, "failed to set broker replicas", "masterBrokerAddress", masterBrokerAddress, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to set broker replicas", "masterBrokerAddress", masterBrokerAddress)
 		return err
 	}
 
@@ -81,7 +81,7 @@ func (con *metaController) setBrokerReplicas(reqLogger logr.Logger, masterBroker
 			if err == errRetryReconciliation {
 				return err
 			}
-			reqLogger.Error(err, "failed to set broker replicas", "replicaBrokerAddress", replicaAddress, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+			reqLogger.Error(err, "failed to set broker replicas", "replicaBrokerAddress", replicaAddress)
 			return err
 		}
 	}
@@ -125,7 +125,7 @@ func (con *metaController) registerServerProxies(reqLogger logr.Logger, masterBr
 			if err == errRetryReconciliation {
 				return err
 			}
-			reqLogger.Error(err, "failed to register server proxy", "proxy", proxy, "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+			reqLogger.Error(err, "failed to register server proxy", "proxy", proxy)
 		}
 	}
 	return nil
@@ -288,7 +288,7 @@ func (con *metaController) getOrCreateConfigMap(reqLogger logr.Logger, cr *under
 	found := &corev1.ConfigMap{}
 	err = con.r.client.Get(context.TODO(), types.NamespacedName{Name: configmap.Name, Namespace: configmap.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new meta configmap", "Namespace", configmap.Namespace, "Name", configmap.Name)
+		reqLogger.Info("Creating a new meta configmap", "Name", configmap.Name)
 		err = con.r.client.Create(context.TODO(), configmap)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
@@ -306,7 +306,7 @@ func (con *metaController) getOrCreateConfigMap(reqLogger logr.Logger, cr *under
 	}
 
 	// configmap already exists - don't requeue
-	reqLogger.Info("Skip reconcile: meta configmap already exists", "Namespace", found.Namespace, "Name", found.Name)
+	reqLogger.Info("Skip reconcile: meta configmap already exists", "Name", found.Name)
 	return found, nil
 }
 
@@ -372,6 +372,10 @@ func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonN
 	}
 
 	if configmap.ObjectMeta.ResourceVersion != store.Version {
+		reqLogger.Info("version pre-check conflict",
+			"requestedVersion", store.Version,
+			"currentVersion", configmap.ObjectMeta.ResourceVersion,
+		)
 		return errExternalStoreConflict
 	}
 
@@ -391,7 +395,8 @@ func (con *metaController) updateExternalStore(reqLogger logr.Logger, undermoonN
 
 	err = con.r.client.Update(context.Background(), configmap)
 	if err != nil && errors.IsConflict(err) {
-		reqLogger.Info("failed to update store in configmap: conflict")
+		reqLogger.Info("failed to update store in configmap: conflict",
+			"requestedVersion", store.Version)
 		return errExternalStoreConflict
 	} else if err != nil {
 		reqLogger.Error(err, "failed to update store in configmap")

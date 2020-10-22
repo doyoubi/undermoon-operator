@@ -28,7 +28,7 @@ func (con *coordinatorController) createCoordinator(reqLogger logr.Logger, cr *u
 		return con.getOrCreateCoordinatorService(reqLogger, cr)
 	})
 	if err != nil {
-		reqLogger.Error(err, "failed to create coordinator service", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create coordinator service")
 		return nil, nil, err
 	}
 
@@ -36,7 +36,7 @@ func (con *coordinatorController) createCoordinator(reqLogger logr.Logger, cr *u
 		return con.getOrCreateCoordinatorStatefulSet(reqLogger, cr)
 	})
 	if err != nil {
-		reqLogger.Error(err, "failed to create coordinator statefulset", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create coordinator statefulset")
 		return nil, nil, err
 	}
 
@@ -53,7 +53,7 @@ func (con *coordinatorController) getOrCreateCoordinatorService(reqLogger logr.L
 	found := &corev1.Service{}
 	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new coordinator service", "Namespace", service.Namespace, "Name", service.Name)
+		reqLogger.Info("Creating a new coordinator service", "Name", service.Name)
 		err = con.r.client.Create(context.TODO(), service)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
@@ -64,14 +64,14 @@ func (con *coordinatorController) getOrCreateCoordinatorService(reqLogger logr.L
 			return nil, err
 		}
 
-		reqLogger.Info("Successfully created a new coordinator service", "Namespace", service.Namespace, "Name", service.Name)
+		reqLogger.Info("Successfully created a new coordinator service", "Name", service.Name)
 		return service, nil
 	} else if err != nil {
 		reqLogger.Error(err, "failed to get coordinator service")
 		return nil, err
 	}
 
-	reqLogger.Info("Skip reconcile: coordinator service already exists", "Namespace", found.Namespace, "Name", found.Name)
+	reqLogger.Info("Skip reconcile: coordinator service already exists", "Name", found.Name)
 	return found, nil
 }
 
@@ -87,7 +87,7 @@ func (con *coordinatorController) getOrCreateCoordinatorStatefulSet(reqLogger lo
 	found := &appsv1.StatefulSet{}
 	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: coordinator.Name, Namespace: coordinator.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new coordinator statefulset", "Namespace", coordinator.Namespace, "Name", coordinator.Name)
+		reqLogger.Info("Creating a new coordinator statefulset", "Name", coordinator.Name)
 		err = con.r.client.Create(context.TODO(), coordinator)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
@@ -106,7 +106,7 @@ func (con *coordinatorController) getOrCreateCoordinatorStatefulSet(reqLogger lo
 	}
 
 	// coordinator already exists - don't requeue
-	reqLogger.Info("Skip reconcile: coordinator statefulset already exists", "Namespace", found.Namespace, "Name", found.Name)
+	reqLogger.Info("Skip reconcile: coordinator statefulset already exists", "Name", found.Name)
 	return found, nil
 }
 
@@ -139,7 +139,7 @@ func (con *coordinatorController) coordiantorAllReady(coordinatorStatefulSet *ap
 func (con *coordinatorController) configSetBroker(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, coordinatorService *corev1.Service, masterBrokerAddress string) error {
 	endpoints, err := getEndpoints(con.r.client, coordinatorService.Name, coordinatorService.Namespace)
 	if err != nil {
-		reqLogger.Error(err, "failed to get coordinator endpoints", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to get coordinator endpoints")
 		return err
 	}
 

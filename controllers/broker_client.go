@@ -43,7 +43,10 @@ func newBrokerClient() *brokerClient {
 func (client *brokerClient) getReplicaAddresses(address string) ([]string, error) {
 	url := fmt.Sprintf("http://%s/api/v2/config", address)
 	payload := brokerConfigPayload{}
-	res, err := client.httpClient.R().SetResult(payload).Get(url)
+	res, err := client.httpClient.R().
+		SetResult(payload).
+		SetError(&errorResponse{}).
+		Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +74,7 @@ func (client *brokerClient) getReplicaAddresses(address string) ([]string, error
 
 func (client *brokerClient) getEpoch(address string) (int64, error) {
 	url := fmt.Sprintf("http://%s/api/v2/epoch", address)
-	res, err := client.httpClient.R().Get(url)
+	res, err := client.httpClient.R().SetError(&errorResponse{}).Get(url)
 	if err != nil {
 		return 0, err
 	}
@@ -102,7 +105,10 @@ type queryServerProxyResponse struct {
 
 func (client *brokerClient) getServerProxies(address string) ([]string, error) {
 	url := fmt.Sprintf("http://%s/api/v2/proxies/addresses", address)
-	res, err := client.httpClient.R().SetResult(&queryServerProxyResponse{}).Get(url)
+	res, err := client.httpClient.R().
+		SetResult(&queryServerProxyResponse{}).
+		SetError(&errorResponse{}).
+		Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +157,10 @@ func (client *brokerClient) setBrokerReplicas(address string, replicaAddresses [
 	payload := brokerConfigPayload{
 		ReplicaAddresses: replicaAddresses,
 	}
-	res, err := client.httpClient.R().SetBody(&payload).Put(url)
+	res, err := client.httpClient.R().
+		SetBody(&payload).
+		SetError(&errorResponse{}).
+		Put(url)
 	if err != nil {
 		return err
 	}
@@ -180,7 +189,10 @@ func (client *brokerClient) setBrokerReplicas(address string, replicaAddresses [
 
 func (client *brokerClient) registerServerProxy(address string, proxy serverProxyMeta) error {
 	url := fmt.Sprintf("http://%s/api/v2/proxies/meta", address)
-	res, err := client.httpClient.R().SetBody(&proxy).Post(url)
+	res, err := client.httpClient.R().
+		SetBody(&proxy).
+		SetError(&errorResponse{}).
+		Post(url)
 	if err != nil {
 		return err
 	}
@@ -209,7 +221,7 @@ func (client *brokerClient) registerServerProxy(address string, proxy serverProx
 
 func (client *brokerClient) deregisterServerProxy(address string, proxyAddress string) error {
 	url := fmt.Sprintf("http://%s/api/v2/proxies/meta/%s", address, proxyAddress)
-	res, err := client.httpClient.R().Delete(url)
+	res, err := client.httpClient.R().SetError(&errorResponse{}).Delete(url)
 	if err != nil {
 		return err
 	}
@@ -245,7 +257,10 @@ func (client *brokerClient) createCluster(address, clusterName string, chunkNumb
 	payload := &createClusterPayload{
 		NodeNumber: chunkNumber * chunkNodeNumber,
 	}
-	res, err := client.httpClient.R().SetBody(payload).SetError(&errorResponse{}).Post(url)
+	res, err := client.httpClient.R().
+		SetBody(payload).
+		SetError(&errorResponse{}).
+		Post(url)
 	if err != nil {
 		return err
 	}
@@ -284,7 +299,10 @@ type queryClusterNamesPayload struct {
 
 func (client *brokerClient) clusterExists(address, clusterName string) (bool, error) {
 	url := fmt.Sprintf("http://%s/api/v2/clusters/names", address)
-	res, err := client.httpClient.R().SetResult(&queryClusterNamesPayload{}).Get(url)
+	res, err := client.httpClient.R().
+		SetResult(&queryClusterNamesPayload{}).
+		SetError(&errorResponse{}).
+		Get(url)
 	if err != nil {
 		return false, err
 	}
@@ -395,7 +413,10 @@ type clusterInfo struct {
 
 func (client *brokerClient) getClusterInfo(address, clusterName string) (*clusterInfo, error) {
 	url := fmt.Sprintf("http://%s/api/v2/clusters/info/%s", address, clusterName)
-	res, err := client.httpClient.R().SetResult(&clusterInfo{}).SetError(&errorResponse{}).Get(url)
+	res, err := client.httpClient.R().
+		SetResult(&clusterInfo{}).
+		SetError(&errorResponse{}).
+		Get(url)
 	if err != nil {
 		return nil, err
 	}
