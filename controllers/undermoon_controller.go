@@ -210,19 +210,19 @@ func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *u
 
 	brokerStatefulSet, brokerService, err := r.brokerCon.createBroker(reqLogger, instance)
 	if err != nil {
-		reqLogger.Error(err, "failed to create broker", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create broker")
 		return nil, err
 	}
 
 	coordinatorStatefulSet, coordinatorService, err := r.coordinatorCon.createCoordinator(reqLogger, instance)
 	if err != nil {
-		reqLogger.Error(err, "failed to create coordinator", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create coordinator")
 		return nil, err
 	}
 
 	storageStatefulSet, storageService, err := r.storageCon.createStorage(reqLogger, instance)
 	if err != nil {
-		reqLogger.Error(err, "failed to create storage", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create storage")
 		return nil, err
 	}
 
@@ -239,21 +239,21 @@ func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *u
 func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) (bool, error) {
 	ready, err := r.brokerCon.brokerReady(resource.brokerStatefulSet, resource.brokerService)
 	if err != nil {
-		reqLogger.Error(err, "failed to check broker ready", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Error(err, "failed to check broker ready")
 		return false, err
 	}
 	if !ready {
-		reqLogger.Info("broker statefulset not ready", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Info("broker statefulset not ready")
 		return false, nil
 	}
 
 	ready, err = r.coordinatorCon.coordinatorReady(resource.coordinatorStatefulSet, resource.coordinatorService)
 	if err != nil {
-		reqLogger.Error(err, "failed to check coordinator ready", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Error(err, "failed to check coordinator ready")
 		return false, err
 	}
 	if !ready {
-		reqLogger.Info("coordinator statefulset not ready", "Name", instance.ObjectMeta.Name, "ClusterName", instance.Spec.ClusterName)
+		reqLogger.Info("coordinator statefulset not ready")
 		return false, nil
 	}
 
@@ -272,8 +272,7 @@ func (r *UndermoonReconciler) triggerRollingUpdate(resource *umResource, reqLogg
 	}
 	ready, err := r.brokerCon.brokerAllReady(resource.brokerStatefulSet, resource.brokerService)
 	if err != nil {
-		reqLogger.Error(err, "Failed to check broker readiness",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to check broker readiness")
 		return err
 	}
 	if !ready {
@@ -290,8 +289,7 @@ func (r *UndermoonReconciler) triggerRollingUpdate(resource *umResource, reqLogg
 	}
 	ready, err = r.coordinatorCon.coordiantorAllReady(resource.coordinatorStatefulSet, resource.coordinatorService)
 	if err != nil {
-		reqLogger.Error(err, "Failed to check coordinator readiness",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to check coordinator readiness")
 		return err
 	}
 	if !ready {
@@ -308,8 +306,7 @@ func (r *UndermoonReconciler) triggerRollingUpdate(resource *umResource, reqLogg
 	}
 	ready, err = r.storageCon.storageAllReadyAndStable(resource.storageService, resource.storageStatefulSet, cr)
 	if err != nil {
-		reqLogger.Error(err, "Failed to check storage readiness",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to check storage readiness")
 		return err
 	}
 	if !ready {

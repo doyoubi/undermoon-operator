@@ -28,7 +28,7 @@ func (con *memBrokerController) createBroker(reqLogger logr.Logger, cr *undermoo
 		return con.getOrCreateBrokerService(reqLogger, cr)
 	})
 	if err != nil {
-		reqLogger.Error(err, "failed to create broker service", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create broker service")
 		return nil, nil, err
 	}
 
@@ -36,7 +36,7 @@ func (con *memBrokerController) createBroker(reqLogger logr.Logger, cr *undermoo
 		return con.getOrCreateBrokerStatefulSet(reqLogger, cr)
 	})
 	if err != nil {
-		reqLogger.Error(err, "failed to create broker statefulset", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create broker statefulset")
 		return nil, nil, err
 	}
 
@@ -53,7 +53,7 @@ func (con *memBrokerController) getOrCreateBrokerService(reqLogger logr.Logger, 
 	found := &corev1.Service{}
 	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: service.Name, Namespace: service.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new broker service", "Namespace", service.Namespace, "Name", service.Name)
+		reqLogger.Info("Creating a new broker service", "Name", service.Name)
 		err = con.r.client.Create(context.TODO(), service)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
@@ -64,14 +64,14 @@ func (con *memBrokerController) getOrCreateBrokerService(reqLogger logr.Logger, 
 			return nil, err
 		}
 
-		reqLogger.Info("Successfully created a new broker service", "Namespace", service.Namespace, "Name", service.Name)
+		reqLogger.Info("Successfully created a new broker service", "Name", service.Name)
 		return service, nil
 	} else if err != nil {
 		reqLogger.Error(err, "failed to get broker service")
 		return nil, err
 	}
 
-	reqLogger.Info("Skip reconcile: broker service already exists", "Namespace", found.Namespace, "Name", found.Name)
+	reqLogger.Info("Skip reconcile: broker service already exists", "Name", found.Name)
 	return found, nil
 }
 
@@ -87,7 +87,7 @@ func (con *memBrokerController) getOrCreateBrokerStatefulSet(reqLogger logr.Logg
 	found := &appsv1.StatefulSet{}
 	err := con.r.client.Get(context.TODO(), types.NamespacedName{Name: broker.Name, Namespace: broker.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new broker statefulset", "Namespace", broker.Namespace, "Name", broker.Name)
+		reqLogger.Info("Creating a new broker statefulset", "Name", broker.Name)
 		err = con.r.client.Create(context.TODO(), broker)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
@@ -105,7 +105,7 @@ func (con *memBrokerController) getOrCreateBrokerStatefulSet(reqLogger logr.Logg
 	}
 
 	// broker already exists - don't requeue
-	reqLogger.Info("Skip reconcile: broker statefulset already exists", "Namespace", found.Namespace, "Name", found.Name)
+	reqLogger.Info("Skip reconcile: broker statefulset already exists", "Name", found.Name)
 	return found, nil
 }
 
@@ -138,7 +138,7 @@ func (con *memBrokerController) brokerAllReady(brokerStatefulSet *appsv1.Statefu
 func (con *memBrokerController) reconcileMaster(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, brokerService *corev1.Service) (string, []string, error) {
 	endpoints, err := getEndpoints(con.r.client, brokerService.Name, brokerService.Namespace)
 	if err != nil {
-		reqLogger.Error(err, "failed to get broker endpoints", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to get broker endpoints")
 		return "", nil, err
 	}
 	brokerAddresses := make([]string, 0)
@@ -149,7 +149,7 @@ func (con *memBrokerController) reconcileMaster(reqLogger logr.Logger, cr *under
 
 	currMaster, err := con.getCurrentMaster(reqLogger, brokerAddresses)
 	if err != nil {
-		reqLogger.Error(err, "failed to get current master", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to get current master")
 		return "", nil, err
 	}
 	err = con.setMasterBrokerStatus(reqLogger, cr, currMaster)
@@ -176,7 +176,7 @@ func (con *memBrokerController) setMasterBrokerStatus(reqLogger logr.Logger, cr 
 			reqLogger.Info("Conflict on master broker status. Try again.", "error", err)
 			return errRetryReconciliation
 		}
-		reqLogger.Error(err, "Failed to set master broker address", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to set master broker address")
 		return err
 	}
 	return nil
@@ -250,7 +250,7 @@ func (con *memBrokerController) updateStatefulSetHelper(reqLogger logr.Logger, c
 
 	if len(brokerStatefulSet.ObjectMeta.ResourceVersion) == 0 {
 		err := pkgerrors.Errorf("Empty ResourceVersion when updating brokerStatefulset: %s", cr.ObjectMeta.Name)
-		reqLogger.Error(err, "failed to update broker statefulset. Empty ResourceVersion.", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update broker statefulset. Empty ResourceVersion.")
 		return err
 	}
 
@@ -260,7 +260,7 @@ func (con *memBrokerController) updateStatefulSetHelper(reqLogger logr.Logger, c
 			reqLogger.Info("Conflict on updating broker StatefulSet. Try again.")
 			return errRetryReconciliation
 		}
-		reqLogger.Error(err, "failed to update broker statefulset", "Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update broker statefulset")
 		return err
 	}
 	reqLogger.Info("Successfully update broker StatefulSet")
