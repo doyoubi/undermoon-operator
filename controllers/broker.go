@@ -102,7 +102,7 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 		},
 		{
 			Name:  "UNDERMOON_SYNC_META_INTERVAL",
-			Value: "5",
+			Value: "60",
 		},
 		{
 			Name:  "UNDERMOON_ENABLE_ORDERED_PROXY",
