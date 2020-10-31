@@ -176,7 +176,7 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 	err = r.storageCon.scaleDownStorageStatefulSet(reqLogger, instance, resource.storageStatefulSet, info)
 	if err != nil {
 		if err == errRetryReconciliation {
-			return reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}, nil
+			return reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
 		}
 		return reconcile.Result{}, err
 	}

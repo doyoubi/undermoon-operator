@@ -70,7 +70,18 @@ type UndermoonStatus struct {
 
 	// Master broker address pointing to the master broker.
 	// +kubebuilder:validation:MinLength=1
+	// +optional
 	MasterBrokerAddress string `json:"masterBrokerAddress"`
+
+	// ScaleState is used to controll scaling storage pods.
+	// +optional
+	ScaleState string `json:"scaleState"`
+
+	// ScaleDownWaitTimestamp is used to wait for some time
+	// before scaling down storage StatefulSet Pods
+	// to avoid connection reset.
+	// +optional
+	ScaleDownWaitTimestamp metav1.Time `json:"scaleDownWaitTimestamp"`
 }
 
 // +kubebuilder:object:root=true

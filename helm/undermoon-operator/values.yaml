@@ -4,7 +4,7 @@
 
 image:
   operatorImage: doyoubi/undermoon-operator
-  operatorImageTag: v0.1.0-alpha.0
+  operatorImageTag: v0.1.0-alpha.1
   operatorImagePullPolicy: IfNotPresent
 
 nameOverride: ""

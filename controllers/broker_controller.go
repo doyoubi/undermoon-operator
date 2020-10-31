@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
@@ -10,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -169,13 +171,13 @@ func (con *memBrokerController) reconcileMaster(reqLogger logr.Logger, cr *under
 }
 
 func (con *memBrokerController) setMasterBrokerStatus(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, masterBrokerAddress string) error {
-	cr.Status.MasterBrokerAddress = masterBrokerAddress
-	err := con.r.client.Status().Update(context.TODO(), cr)
+	// `masterBrokerAddress` is only exposed to external for debugging.
+	// It does not need to be accurate so use PATCH here.
+	patchData := []byte(fmt.Sprintf(`{"status":{"masterBrokerAddress":"%s"}}`, masterBrokerAddress))
+	patch := client.RawPatch(types.MergePatchType, patchData)
+
+	err := con.r.client.Status().Patch(context.TODO(), cr, patch)
 	if err != nil {
-		if errors.IsConflict(err) {
-			reqLogger.Info("Conflict on master broker status. Try again.", "error", err)
-			return errRetryReconciliation
-		}
 		reqLogger.Error(err, "Failed to set master broker address")
 		return err
 	}
