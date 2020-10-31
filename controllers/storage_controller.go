@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	undermoonv1alpha1 "github.com/doyoubi/undermoon-operator/api/v1alpha1"
 	pkgerrors "github.com/pkg/errors"
@@ -12,8 +13,16 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+)
+
+const (
+	scaleStateStable        = "Stable"
+	scaleStateScaleDownWait = "ScaleDownWait"
+
+	scaleDownWaitTime = time.Second * 30
 )
 
 type storageController struct {
@@ -142,8 +151,55 @@ func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger,
 		return errRetryReconciliation
 	}
 
+	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	if *storage.Spec.Replicas == replicaNum {
+		return nil
+	}
+
+	// Postpone scaling down statefulset to avoid connection reset
+	if cr.Status.ScaleState != scaleStateScaleDownWait {
+		if err := con.setScaleState(reqLogger, cr, scaleStateScaleDownWait); err != nil {
+			return err
+		}
+		return errRetryReconciliation
+	}
+
+	if cr.Status.ScaleDownWaitTimestamp.Add(scaleDownWaitTime).After(time.Now()) {
+		reqLogger.Info("Wait extra time before scaling down")
+		return errRetryReconciliation
+	}
+
 	err := con.updateStorageStatefulSet(reqLogger, cr, storage)
 	if err != nil {
+		return err
+	}
+
+	if err := con.setScaleState(reqLogger, cr, scaleStateStable); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (con *storageController) setScaleState(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, scaleState string) error {
+	cr.Status.ScaleState = scaleState
+	if scaleState == scaleStateScaleDownWait {
+		cr.Status.ScaleDownWaitTimestamp = metav1.Now()
+	} else {
+		cr.Status.ScaleDownWaitTimestamp = metav1.Unix(0, 0)
+	}
+
+	// This needs to be accurate so use UPDATE with ResourceVersion check
+	// instead of PATCH here.
+	err := con.r.client.Status().Update(context.TODO(), cr)
+	if err != nil {
+		if errors.IsConflict(err) {
+			reqLogger.Info("Conflict on updating ScaleState. Try again.", "error", err)
+			return errRetryReconciliation
+		}
+		reqLogger.Error(err, "Failed to change ScaleState",
+			"currState", cr.Status.ScaleState,
+			"newState", scaleState)
 		return err
 	}
 	return nil

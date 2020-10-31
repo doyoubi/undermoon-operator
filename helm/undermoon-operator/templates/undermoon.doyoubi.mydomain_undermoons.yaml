@@ -172,8 +172,13 @@ spec:
               description: Master broker address pointing to the master broker.
               minLength: 1
               type: string
-          required:
-          - masterBrokerAddress
+            scaleDownWaitTimestamp:
+              description: ScaleDownWaitTimestamp is used to wait for some time before scaling down storage StatefulSet Pods to avoid connection reset.
+              format: date-time
+              type: string
+            scaleState:
+              description: ScaleState is used to controll scaling storage pods.
+              type: string
           type: object
       type: object
   version: v1alpha1
