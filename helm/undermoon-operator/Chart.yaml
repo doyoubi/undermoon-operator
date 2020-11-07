@@ -22,4 +22,4 @@ version: 0.1.2
 # follow Semantic Versioning. They should reflect the version the application is using.
 #
 # This should be the same as the version of undermoon-operator.
-appVersion: v0.1.0-alpha.1
+appVersion: v0.1.0
