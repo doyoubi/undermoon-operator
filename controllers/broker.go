@@ -45,9 +45,42 @@ func createBrokerService(cr *undermoonv1alpha1.Undermoon) *corev1.Service {
 	}
 }
 
+func createBrokerPublicService(cr *undermoonv1alpha1.Undermoon) *corev1.Service {
+	undermoonName := cr.ObjectMeta.Name
+
+	labels := map[string]string{
+		"undermoonService":     undermoonServiceTypeBroker,
+		"undermoonName":        undermoonName,
+		"undermoonClusterName": cr.Spec.ClusterName,
+	}
+
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      BrokerPublicServiceName(undermoonName),
+			Namespace: cr.Namespace,
+			Labels:    labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:     "broker-port",
+					Port:     brokerPort,
+					Protocol: corev1.ProtocolTCP,
+				},
+			},
+			Selector: labels,
+		},
+	}
+}
+
 // BrokerServiceName defines the service for broker statefulsets.
 func BrokerServiceName(undermoonName string) string {
 	return fmt.Sprintf("%s-bk-svc", undermoonName)
+}
+
+// BrokerPublicServiceName defines the service for broker statefulsets.
+func BrokerPublicServiceName(undermoonName string) string {
+	return fmt.Sprintf("%s-broker", undermoonName)
 }
 
 func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSet {
@@ -219,6 +252,11 @@ func BrokerStatefulSetName(undermoonName string) string {
 func genBrokerFQDN(podName, undermoonName, namespace string) string {
 	// pod-specific-string.serviceName.default.svc.cluster.local
 	return fmt.Sprintf("%s.%s.%s.svc.cluster.local", podName, BrokerServiceName(undermoonName), namespace)
+}
+
+func genBrokerPublicFQDN(undermoonName, namespace string) string {
+	// serviceName.default.svc.cluster.local
+	return fmt.Sprintf("%s.%s.svc.cluster.local", BrokerPublicServiceName(undermoonName), namespace)
 }
 
 func genBrokerAddressFromName(name string, cr *undermoonv1alpha1.Undermoon) string {

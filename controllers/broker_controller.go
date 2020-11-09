@@ -27,10 +27,18 @@ func newBrokerController(r *UndermoonReconciler) *memBrokerController {
 
 func (con *memBrokerController) createBroker(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*appsv1.StatefulSet, *corev1.Service, error) {
 	brokerService, err := createServiceGuard(func() (*corev1.Service, error) {
-		return con.getOrCreateBrokerService(reqLogger, cr)
+		return con.getOrCreateBrokerService(reqLogger, cr, false)
 	})
 	if err != nil {
 		reqLogger.Error(err, "failed to create broker service")
+		return nil, nil, err
+	}
+
+	_, err = createServiceGuard(func() (*corev1.Service, error) {
+		return con.getOrCreateBrokerService(reqLogger, cr, true)
+	})
+	if err != nil {
+		reqLogger.Error(err, "failed to create broker public service")
 		return nil, nil, err
 	}
 
@@ -45,8 +53,13 @@ func (con *memBrokerController) createBroker(reqLogger logr.Logger, cr *undermoo
 	return brokerStatefulSet, brokerService, nil
 }
 
-func (con *memBrokerController) getOrCreateBrokerService(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) (*corev1.Service, error) {
-	service := createBrokerService(cr)
+func (con *memBrokerController) getOrCreateBrokerService(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, public bool) (*corev1.Service, error) {
+	var service *corev1.Service
+	if public {
+		service = createBrokerPublicService(cr)
+	} else {
+		service = createBrokerService(cr)
+	}
 
 	if err := controllerutil.SetControllerReference(cr, service, con.r.scheme); err != nil {
 		return nil, err
