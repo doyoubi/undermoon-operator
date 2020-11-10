@@ -109,6 +109,7 @@ func getEndpoints(client client.Client, serviceName, namespace string) ([]corev1
 
 const podIPEnvStr = "$(UM_POD_IP)"
 const podNameStr = "$(UM_POD_NAME)"
+const podNameEnvStr = "${UM_POD_NAME}"
 
 func podIPEnv() corev1.EnvVar {
 	return corev1.EnvVar{

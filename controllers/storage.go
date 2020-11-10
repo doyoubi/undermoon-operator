@@ -23,6 +23,7 @@ const redisContainerName = "redis"
 const undermoonServiceTypeStorage = "storage"
 const storageTopologyKey = "undermoon-storage-topology-key"
 const redisReplicationOffsetThreshold uint32 = 10000
+const serverProxyShutdownTime int64 = 30 // seconds
 
 // This service is only used internally for getting the created server proxies
 // which have not received UMCTL SETCLUSTER.
@@ -102,9 +103,10 @@ func StoragePublicServiceName(undermoonName string) string {
 }
 
 func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSet {
+	undermoonName := cr.ObjectMeta.Name
 	labels := map[string]string{
 		"undermoonService":     undermoonServiceTypeStorage,
-		"undermoonName":        cr.ObjectMeta.Name,
+		"undermoonName":        undermoonName,
 		"undermoonClusterName": cr.Spec.ClusterName,
 	}
 
@@ -113,7 +115,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 	// because using service address can result in too many
 	// redirections if the majority pods are removed
 	// at the same time.
-	firstProxyAddress := genStorageAddressFromName(storageStatefulSetPodName(cr.ObjectMeta.Name, 0), cr)
+	firstProxyAddress := genStorageAddressFromName(storageStatefulSetPodName(undermoonName, 0), cr)
 
 	env := []corev1.EnvVar{
 		podNameEnv(),
@@ -181,6 +183,8 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 	}
 
 	fqdn := genStorageFQDNFromName(podNameStr, cr)
+	serverProxyAddress := fmt.Sprintf("%s:%d", fqdn, cr.Spec.Port)
+	serverProxyAddressEnv := fmt.Sprintf("%s:%d", genStorageFQDNFromName(podNameEnvStr, cr), cr.Spec.Port)
 	serverProxyContainer := corev1.Container{
 		Name:            serverProxyContainerName,
 		Image:           cr.Spec.UndermoonImage,
@@ -188,21 +192,23 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		Command: []string{
 			"sh",
 			"-c",
-			fmt.Sprintf("UNDERMOON_ANNOUNCE_ADDRESS=\"%s:%d\" server_proxy", fqdn, cr.Spec.Port),
+			fmt.Sprintf(serverProxyRunScript, serverProxyAddress),
 		},
 		Env:            env,
 		Resources:      cr.Spec.ProxyResources,
-		Lifecycle:      genPreStopHookLifeCycle([]string{"sleep", "30"}),
+		Lifecycle:      genServerProxyPreStopHook(undermoonName, cr.ObjectMeta.Namespace, serverProxyAddressEnv),
 		ReadinessProbe: genServerProxyReadinessProbe(cr.Spec.Port),
 	}
 	redisContainer1 := genRedisContainer(1, cr.Spec.RedisImage, cr.Spec.MaxMemory, redisPort1, cr)
 	redisContainer2 := genRedisContainer(2, cr.Spec.RedisImage, cr.Spec.MaxMemory, redisPort2, cr)
 
+	serverProxyTerminationTime := serverProxyShutdownTime
 	podSpec := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
+			TerminationGracePeriodSeconds: &serverProxyTerminationTime,
 			Containers: []corev1.Container{
 				// `storageStatefulSetChanged` depends on this order.
 				serverProxyContainer,
@@ -234,6 +240,46 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		},
 	}
 }
+
+func genServerProxyPreStopHook(undermoonName, namespace, serverProxyAddress string) *corev1.Lifecycle {
+	brokerAddress := fmt.Sprintf("%s:%d", genBrokerPublicFQDN(undermoonName, namespace), brokerPort)
+	script := fmt.Sprintf(serverProxyPreStopScript, serverProxyShutdownTime, brokerAddress, serverProxyAddress)
+	return genPreStopHookLifeCycle([]string{"sh", "-c", script})
+}
+
+// When the main container exits,
+// the preStop hook will also be killed.
+// To make preStop script run safely without being killed,
+// we need to trap the default TERM signal and kill
+// the main container ourselves
+// and wait some time in the main container
+// after the server-proxy exits.
+const serverProxyRunScript = `
+#!/bin/sh
+trap 'echo "server-proxy received sigterm"' TERM;
+UNDERMOON_ANNOUNCE_ADDRESS="%s" server_proxy;
+echo 'server-proxy wait some time to prevent preStop hook to be killed';
+sleep 3;
+`
+
+const serverProxyPreStopScript = `
+#!/bin/sh
+set +e;
+i=0;
+while [ "${i}" -ne %d ]; do
+	status=$(curl -sS --connect-timeout 3 -XPOST "http://%s/api/v2/proxies/failover/%s" -o /dev/stderr -w "%%{http_code}");
+	echo "failover status code: ${status}";
+	if [ "${status}" -eq '200' ]; then
+		break;
+	fi;
+	i=$((i + 1));
+	sleep 1;
+done;
+echo 'shutting down server-proxy';
+printf '*2\r\n$5\r\nUMCTL\r\n$8\r\nSHUTDOWN\r\n' | curl telnet://127.0.0.1:5299;
+echo 'proxy killed';
+exit 0;
+`
 
 func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, cr *undermoonv1alpha1.Undermoon) corev1.Container {
 	portStr := fmt.Sprintf("%d", port)
@@ -276,6 +322,7 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 // This is copied from `./scripts/redis-readiness.sh`.
 // See the comments there for details.
 var redisReadinessScript string = `
+#!/bin/sh
 set +e;
 TAG_FILE="${0}";
 PORT="${1}";
