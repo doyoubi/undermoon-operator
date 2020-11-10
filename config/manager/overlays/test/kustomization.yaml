@@ -7,7 +7,7 @@ resources:
 images:
 - name: controller
   newName: localhost:5000/undermoon-operator
-  newTag: v0.1.1-alpha.0
+  newTag: v0.1.1
 
 patchesJson6902:
 - target:
