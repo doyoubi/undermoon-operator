@@ -184,6 +184,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 
 	fqdn := genStorageFQDNFromName(podNameStr, cr)
 	serverProxyAddress := fmt.Sprintf("%s:%d", fqdn, cr.Spec.Port)
+	serverProxyAddressEnv := fmt.Sprintf("%s:%d", genStorageFQDNFromName(podNameEnvStr, cr), cr.Spec.Port)
 	serverProxyContainer := corev1.Container{
 		Name:            serverProxyContainerName,
 		Image:           cr.Spec.UndermoonImage,
@@ -195,7 +196,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		},
 		Env:            env,
 		Resources:      cr.Spec.ProxyResources,
-		Lifecycle:      genServerProxyPreStopHook(undermoonName, cr.ObjectMeta.Namespace, serverProxyAddress),
+		Lifecycle:      genServerProxyPreStopHook(undermoonName, cr.ObjectMeta.Namespace, serverProxyAddressEnv),
 		ReadinessProbe: genServerProxyReadinessProbe(cr.Spec.Port),
 	}
 	redisContainer1 := genRedisContainer(1, cr.Spec.RedisImage, cr.Spec.MaxMemory, redisPort1, cr)
@@ -266,10 +267,13 @@ const serverProxyPreStopScript = `
 set +e;
 i=0;
 while [ "${i}" -ne %d ]; do
-	if ! curl -sS --connect-timeout 3 -XPOST "http://%s/api/v2/proxies/failover/%s"; then
+	status=$(curl -sS --connect-timeout 3 -XPOST "http://%s/api/v2/proxies/failover/%s" -o /dev/stderr -w "%%{http_code}");
+	echo "failover status code: ${status}";
+	if [ "${status}" -eq '200' ]; then
 		break;
 	fi;
 	i=$((i + 1));
+	sleep 1;
 done;
 echo 'shutting down server-proxy';
 printf '*2\r\n$5\r\nUMCTL\r\n$8\r\nSHUTDOWN\r\n' | curl telnet://127.0.0.1:5299;
