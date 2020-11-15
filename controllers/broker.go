@@ -166,7 +166,7 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 		},
 		{
 			Name:  "UNDERMOON_HTTP_STORAGE_ADDRESS",
-			Value: fmt.Sprintf("%s:%d", metaServiceHost, metaServicePort),
+			Value: fmt.Sprintf("%s:%d", metaServiceHost(), metaServicePort),
 		},
 		{
 			Name:  "UNDERMOON_REFRESH_INTERVAL",

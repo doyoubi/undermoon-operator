@@ -12,7 +12,7 @@ cluster:
 
 image:
   undermoonImage: doyoubi/undermoon
-  undermoonImageTag: 0.4.1
+  undermoonImageTag: 0.4.1-buster
   undermoonImagePullPolicy: IfNotPresent
   redisImage: redis
   redisImageTag: 5.0.9
@@ -21,19 +21,19 @@ resources:
   brokerResources:
     limits:
       {}
-      # cpu: "0.05"
+      # memory: "1G"
   coordinatorResources:
     limits:
       {}
-      # cpu: "0.05"
+      # memory: "1G"
   proxyResources:
     limits:
       {}
-      # cpu: "0.05"
+      # memory: "1G"
   redisResources:
     limits:
       {}
-      # cpu: "0.05"
+      # memory: "5G"
 
 nameOverride: ""
 fullnameOverride: ""
