@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	pkgerrors "github.com/pkg/errors"
@@ -16,8 +17,9 @@ const (
 	metaStoreKey    = "broker_meta_store"
 	metaPasswordKey = "broker_meta_password"
 	// The service is provided by this operator.
-	metaServiceHost = "undermoon-operator-storage"
-	metaServicePort = 9999
+	metaServiceName             = "undermoon-operator-storage"
+	metaServicePort             = 9999
+	operatorNamespaceEnvVarName = "UNDERMOON_OPERATOR_NAMESPACE"
 )
 
 func createMetaConfigMap(cr *undermoonv1alpha1.Undermoon, initData string) *corev1.ConfigMap {
@@ -78,6 +80,11 @@ func genBrokerPassword() (string, error) {
 
 func brokerStorageName(undermoonName, namespace string) string {
 	return fmt.Sprintf("%s@%s", undermoonName, namespace)
+}
+
+func metaServiceHost() string {
+	namespace := os.Getenv(operatorNamespaceEnvVarName)
+	return fmt.Sprintf("%s.%s.svc.cluster.local", metaServiceName, namespace)
 }
 
 func extractStorageName(name string) (string, string, error) {
