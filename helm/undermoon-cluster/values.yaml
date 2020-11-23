@@ -35,5 +35,7 @@ resources:
       {}
       # memory: "5G"
 
+affinity: {}
+
 nameOverride: ""
 fullnameOverride: ""

@@ -215,7 +215,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 				redisContainer1,
 				redisContainer2,
 			},
-			Affinity: genAntiAffinity(labels, cr.ObjectMeta.Namespace, storageTopologyKey),
+			Affinity: addAntiAffinity(cr.Spec.Affinity, labels, cr.ObjectMeta.Namespace, storageTopologyKey),
 		},
 	}
 

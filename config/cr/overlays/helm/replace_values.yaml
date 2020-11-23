@@ -41,3 +41,6 @@
 - op: replace
   path: /spec/redisResources
   value: "{{- toYaml .Values.resources.redisResources | nindent 4 }}"
+- op: replace
+  path: /spec/affinity
+  value: "{{- toYaml .Values.affinity | nindent 4 }}"
