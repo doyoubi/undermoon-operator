@@ -101,7 +101,7 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{container},
-			Affinity:   genAntiAffinity(labels, cr.ObjectMeta.Namespace, coordinatorTopologyKey),
+			Affinity:   addAntiAffinity(cr.Spec.Affinity, labels, cr.ObjectMeta.Namespace, coordinatorTopologyKey),
 		},
 	}
 

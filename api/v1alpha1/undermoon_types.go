@@ -61,6 +61,9 @@ type UndermoonSpec struct {
 	ProxyResources corev1.ResourceRequirements `json:"proxyResources"`
 	// +optional
 	RedisResources corev1.ResourceRequirements `json:"redisResources"`
+
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity"`
 }
 
 // UndermoonStatus defines the observed state of Undermoon

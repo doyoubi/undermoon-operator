@@ -169,23 +169,30 @@ func (pool *redisClientPool) getClient(redisAddress string) *redis.Client {
 	return client
 }
 
-func genAntiAffinity(labels map[string]string, namespace, topologyKey string) *corev1.Affinity {
-	return &corev1.Affinity{
-		PodAntiAffinity: &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-				{
-					Weight: 2,
-					PodAffinityTerm: corev1.PodAffinityTerm{
-						LabelSelector: &metav1.LabelSelector{
-							MatchLabels: labels,
-						},
-						Namespaces:  []string{namespace},
-						TopologyKey: topologyKey,
-					},
-				},
+func addAntiAffinity(crAffinity *corev1.Affinity, labels map[string]string, namespace, topologyKey string) *corev1.Affinity {
+	term := corev1.WeightedPodAffinityTerm{
+		Weight: 2,
+		PodAffinityTerm: corev1.PodAffinityTerm{
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: labels,
 			},
+			Namespaces:  []string{namespace},
+			TopologyKey: topologyKey,
 		},
 	}
+
+	affinity := &corev1.Affinity{}
+	if crAffinity != nil {
+		*affinity = *crAffinity
+	}
+	if affinity.PodAntiAffinity == nil {
+		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{}
+	}
+	if affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution == nil {
+		affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution = []corev1.WeightedPodAffinityTerm{}
+	}
+	affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution, term)
+	return affinity
 }
 
 func genPreStopHookLifeCycle(cmd []string) *corev1.Lifecycle {

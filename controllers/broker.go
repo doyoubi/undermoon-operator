@@ -187,7 +187,7 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{container},
-			Affinity:   genAntiAffinity(labels, cr.ObjectMeta.Namespace, brokerTopologyKey),
+			Affinity:   addAntiAffinity(cr.Spec.Affinity, labels, cr.ObjectMeta.Namespace, brokerTopologyKey),
 		},
 	}
 

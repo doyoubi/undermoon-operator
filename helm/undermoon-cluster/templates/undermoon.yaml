@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   activeRedirection: {{ .Values.cluster.activeRedirection }}
+  affinity: {{- toYaml .Values.affinity | nindent 4 }}
   brokerResources: {{- toYaml .Values.resources.brokerResources | nindent 4 }}
   chunkNumber: {{ .Values.cluster.chunkNumber }}
   clusterName: {{ .Values.cluster.clusterName }}
