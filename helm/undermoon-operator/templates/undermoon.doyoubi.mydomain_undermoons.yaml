@@ -432,6 +432,15 @@ spec:
               format: int32
               minimum: 1
               type: integer
+            migrationScanCount:
+              description: COUNT arguments for SCAN command during migration.
+              format: int32
+              minimum: 1
+              type: integer
+            migrationScanInterval:
+              description: Interval to trigger SCAN command during migration. This is in microseconds.
+              format: int32
+              type: integer
             port:
               description: Port for the redis service.
               format: int32
@@ -500,6 +509,8 @@ spec:
           - chunkNumber
           - clusterName
           - maxMemory
+          - migrationScanCount
+          - migrationScanInterval
           - port
           - proxyThreads
           - redisImage

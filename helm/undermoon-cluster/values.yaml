@@ -9,6 +9,8 @@ cluster:
   port: 5299
   activeRedirection: false
   proxyThreads: 2
+  migrationScanInterval: 1000
+  migrationScanCount: 16
 
 image:
   undermoonImage: doyoubi/undermoon

@@ -446,3 +446,54 @@ func (client *brokerClient) getClusterInfo(address, clusterName string) (*cluste
 	content := res.Body()
 	return nil, errors.Errorf("Failed to get cluster info: invalid status code %d: %s", res.StatusCode(), string(content))
 }
+
+type clusterConfigPayload struct {
+	MigrationScanInterval string `json:"migration_scan_interval"`
+	MigrationScanCount    string `json:"migration_scan_count"`
+}
+
+func (client *brokerClient) changeClusterConfig(address, clusterName string, scanInterval, scanCount uint32) error {
+	url := fmt.Sprintf("http://%s/api/v2/clusters/config/%s", address, clusterName)
+	payload := &clusterConfigPayload{
+		MigrationScanInterval: fmt.Sprintf("%d", scanInterval),
+		MigrationScanCount:    fmt.Sprintf("%d", scanCount),
+	}
+	res, err := client.httpClient.R().
+		SetBody(payload).
+		SetError(&errorResponse{}).
+		Patch(url)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode() == 200 {
+		return nil
+	}
+
+	if res.StatusCode() == 504 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrExternalTimeout {
+			return errExternalTimeout
+		}
+	}
+
+	if res.StatusCode() == 404 {
+		response, ok := res.Error().(*errorResponse)
+		if ok {
+			return errors.Errorf("cluster not found, error code %s", response.Error)
+		}
+	}
+
+	if res.StatusCode() == 409 {
+		response, ok := res.Error().(*errorResponse)
+		if ok && response.Error == errStrRetry {
+			return errRetryReconciliation
+		}
+		if ok && response.Error == errStrMigrationRunning {
+			return errMigrationRunning
+		}
+	}
+
+	content := res.Body()
+	return errors.Errorf("Failed to update cluster config: invalid status code %d: %s", res.StatusCode(), string(content))
+}

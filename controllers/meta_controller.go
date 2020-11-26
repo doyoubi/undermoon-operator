@@ -57,6 +57,11 @@ func (con *metaController) reconcileMeta(
 		return nil, err
 	}
 
+	err = con.changeClusterConfig(reqLogger, masterBrokerAddress, cr)
+	if err != nil {
+		return nil, err
+	}
+
 	info, err := con.getClusterInfo(reqLogger, masterBrokerAddress, cr)
 	if err != nil {
 		return nil, err
@@ -192,6 +197,29 @@ func (con *metaController) createCluster(reqLogger logr.Logger, masterBrokerAddr
 			return err
 		}
 		reqLogger.Error(err, "failed to create cluster",
+			"Name", cr.ObjectMeta.Name,
+			"ClusterName", cr.Spec.ClusterName)
+		return err
+	}
+	return nil
+}
+
+func (con *metaController) changeClusterConfig(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon) error {
+	err := con.client.changeClusterConfig(
+		masterBrokerAddress,
+		cr.Spec.ClusterName,
+		cr.Spec.MigrationScanInterval,
+		cr.Spec.MigrationScanCount,
+	)
+	if err != nil {
+		if err == errMigrationRunning {
+			// Undermoon will implement this restriction later.
+			return errRetryReconciliation
+		}
+		if err == errRetryReconciliation {
+			return err
+		}
+		reqLogger.Error(err, "failed to change cluster config",
 			"Name", cr.ObjectMeta.Name,
 			"ClusterName", cr.Spec.ClusterName)
 		return err

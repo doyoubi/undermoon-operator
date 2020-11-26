@@ -11,6 +11,8 @@ spec:
   clusterName: {{ .Values.cluster.clusterName }}
   coordinatorResources: {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
   maxMemory: {{ .Values.cluster.maxMemory }}
+  migrationScanCount: {{ .Values.cluster.migrationScanCount }}
+  migrationScanInterval: {{ .Values.cluster.migrationScanInterval }}
   port: {{ .Values.cluster.port }}
   proxyResources: {{- toYaml .Values.resources.proxyResources | nindent 4 }}
   proxyThreads: {{ .Values.cluster.proxyThreads }}

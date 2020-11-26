@@ -21,6 +21,12 @@
   path: /spec/proxyThreads
   value: "{{ .Values.cluster.proxyThreads }}"
 - op: replace
+  path: /spec/migrationScanInterval
+  value: "{{ .Values.cluster.migrationScanInterval }}"
+- op: replace
+  path: /spec/migrationScanCount
+  value: "{{ .Values.cluster.migrationScanCount }}"
+- op: replace
   path: /spec/undermoonImage
   value: "{{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}"
 - op: replace

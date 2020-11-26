@@ -46,6 +46,11 @@ type UndermoonSpec struct {
 	ActiveRedirection bool `json:"activeRedirection"`
 	// +kubebuilder:validation:Minimum=1
 	ProxyThreads uint32 `json:"proxyThreads"`
+	// Interval to trigger SCAN command during migration. This is in microseconds.
+	MigrationScanInterval uint32 `json:"migrationScanInterval"`
+	// COUNT arguments for SCAN command during migration.
+	// +kubebuilder:validation:Minimum=1
+	MigrationScanCount uint32 `json:"migrationScanCount"`
 
 	// +kubebuilder:validation:MinLength=1
 	UndermoonImage           string            `json:"undermoonImage"`
