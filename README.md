@@ -11,14 +11,14 @@ using [operator-sdk](https://sdk.operatorframework.io/).
 ```
 
 Then you can see the following packages in the current directory:
-- undermoon-operator-0.2.0.tgz
-- undermoon-cluster-0.2.0.tgz
+- undermoon-operator-0.2.1.tgz
+- undermoon-cluster-0.2.1.tgz
 
 ### Run the Operator
 Run the `undermoon-operator`:
 Note that you can change the name `my-undermoon-operator`.
 ```
-> helm install my-undermoon-operator undermoon-operator-0.2.0.tgz
+> helm install my-undermoon-operator undermoon-operator-0.2.1.tgz
 ```
 
 ### Create an Undermoon Cluster
@@ -27,11 +27,11 @@ Create an undermoon cluster by installing helm charts package:
 > helm install \
     --set 'cluster.clusterName=my-cluster-name' \
     --set 'cluster.chunkNumber=1' \
-    --set 'cluster.maxMemory=50' \
+    --set 'cluster.maxMemory=2048' \
     --set 'cluster.port=5299' \
     my-cluster \
     -n my-namespace \
-    undermoon-cluster-0.2.0.tgz
+    undermoon-cluster-0.2.1.tgz
 ```
 
 Fields here:
