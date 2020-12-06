@@ -132,7 +132,6 @@ func coordinatorStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.
 
 	if cr.Spec.UndermoonImage != container.Image {
 		reqLogger.Info("Coordinator image is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldImage", container.Image, "NewImage", cr.Spec.UndermoonImage,
 		)
 		return true
@@ -140,7 +139,6 @@ func coordinatorStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.
 
 	if cr.Spec.UndermoonImagePullPolicy != container.ImagePullPolicy {
 		reqLogger.Info("Coordinator image pull policy is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldImagePullPolicy", container.ImagePullPolicy,
 			"NewImagePullPolicy", cr.Spec.UndermoonImagePullPolicy,
 		)
@@ -149,7 +147,6 @@ func coordinatorStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.
 
 	if !resourceRequirementsEqual(cr.Spec.CoordinatorResources, container.Resources) {
 		reqLogger.Info("Coordinator resource is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldResource", container.Resources, "NewResource", cr.Spec.CoordinatorResources,
 		)
 		return true

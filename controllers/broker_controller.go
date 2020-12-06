@@ -247,8 +247,7 @@ func (con *memBrokerController) triggerStatefulSetRollingUpdate(reqLogger logr.L
 
 	ready, err := con.brokerAllReady(brokerStatefulSet, brokerService)
 	if err != nil {
-		reqLogger.Error(err, "Failed to check broker readiness",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to check broker readiness")
 		return err
 	}
 	if !ready {

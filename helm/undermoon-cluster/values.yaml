@@ -8,7 +8,7 @@ cluster:
   maxMemory: 32  # in MBs
   port: 5299
   activeRedirection: false
-  proxyThreads: 2
+  proxyThreads: 4
   migrationScanInterval: 1000
   migrationScanCount: 16
 

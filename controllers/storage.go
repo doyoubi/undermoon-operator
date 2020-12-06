@@ -436,7 +436,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 
 	if cr.Spec.UndermoonImage != serverProxyContainer.Image {
 		reqLogger.Info("Proxy image is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldImage", serverProxyContainer.Image, "NewImage", cr.Spec.UndermoonImage,
 		)
 		return true
@@ -444,7 +443,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 
 	if cr.Spec.UndermoonImagePullPolicy != serverProxyContainer.ImagePullPolicy {
 		reqLogger.Info("Proxy image pull policy is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldImagePullPolicy", serverProxyContainer.ImagePullPolicy,
 			"NewImagePullPolicy", cr.Spec.UndermoonImagePullPolicy,
 		)
@@ -453,7 +451,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 
 	if cr.Spec.RedisImage != redis1Container.Image || cr.Spec.RedisImage != redis2Container.Image {
 		reqLogger.Info("Redis image is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldImage1", redis1Container.Image,
 			"OldImage2", redis2Container.Image,
 			"NewImage", cr.Spec.UndermoonImage,
@@ -463,7 +460,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 
 	if !resourceRequirementsEqual(cr.Spec.ProxyResources, serverProxyContainer.Resources) {
 		reqLogger.Info("Proxy resource is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldResource", serverProxyContainer.Resources, "NewResource", cr.Spec.CoordinatorResources,
 		)
 		return true
@@ -473,7 +469,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 	redis2ResourceChanged := !resourceRequirementsEqual(cr.Spec.RedisResources, redis2Container.Resources)
 	if redis1ResourceChanged || redis2ResourceChanged {
 		reqLogger.Info("Redis resource is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldResource1", redis1Container.Resources,
 			"OldResource2", redis2Container.Resources,
 			"NewResource", cr.Spec.CoordinatorResources,
@@ -488,7 +483,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 	specMaxmeory := fmt.Sprintf("%d", cr.Spec.MaxMemory)
 	if specMaxmeory != redis1Maxmemory || specMaxmeory != redis2Maxmemory {
 		reqLogger.Info("Redis maxmemory is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldMaxmemory1", redis1Maxmemory,
 			"OldMaxmemory2", redis2Maxmemory,
 			"NewMaxmemory", specMaxmeory,
@@ -499,7 +493,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 	activeRedirection := getEnvValue(serverProxyContainer.Env, serverProxyActiveRedirectionEnvName)
 	if strconv.FormatBool(cr.Spec.ActiveRedirection) != activeRedirection {
 		reqLogger.Info("Proxy ActiveRedirection is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldActiveRedirection", activeRedirection,
 			"NewActiveRedirection", cr.Spec.ActiveRedirection,
 		)
@@ -509,7 +502,6 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 	threadNumber := getEnvValue(serverProxyContainer.Env, serverProxyThreadNumberEnvName)
 	if strconv.FormatUint(uint64(cr.Spec.ProxyThreads), 10) != threadNumber {
 		reqLogger.Info("Proxy thread number is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldThreadNumber", threadNumber,
 			"NewThreadNumber", cr.Spec.ProxyThreads,
 		)

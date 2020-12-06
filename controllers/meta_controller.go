@@ -139,9 +139,7 @@ func (con *metaController) registerServerProxies(reqLogger logr.Logger, masterBr
 func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, masterBrokerAddress string, proxies []serverProxyMeta, cr *undermoonv1alpha1.Undermoon) error {
 	existingProxies, err := con.client.getServerProxies(masterBrokerAddress)
 	if err != nil {
-		reqLogger.Error(err, "failed to get server proxy addresses",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to get server proxy addresses")
 		return err
 	}
 
@@ -169,9 +167,7 @@ func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, master
 				return err
 			}
 			reqLogger.Error(err, "failed to deregister server proxy",
-				"proxyAddress", deleteAddress,
-				"Name", cr.ObjectMeta.Name,
-				"ClusterName", cr.Spec.ClusterName)
+				"proxyAddress", deleteAddress)
 		}
 	}
 
@@ -181,9 +177,7 @@ func (con *metaController) deregisterServerProxies(reqLogger logr.Logger, master
 func (con *metaController) createCluster(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon) error {
 	exists, err := con.client.clusterExists(masterBrokerAddress, cr.Spec.ClusterName)
 	if err != nil {
-		reqLogger.Error(err, "failed to check whether cluster exists",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to check whether cluster exists")
 		return err
 	}
 
@@ -196,9 +190,7 @@ func (con *metaController) createCluster(reqLogger logr.Logger, masterBrokerAddr
 		if err == errRetryReconciliation {
 			return err
 		}
-		reqLogger.Error(err, "failed to create cluster",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to create cluster")
 		return err
 	}
 	return nil
@@ -219,9 +211,7 @@ func (con *metaController) changeClusterConfig(reqLogger logr.Logger, masterBrok
 		if err == errRetryReconciliation {
 			return err
 		}
-		reqLogger.Error(err, "failed to change cluster config",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to change cluster config")
 		return err
 	}
 	return nil
@@ -240,9 +230,7 @@ func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerA
 		if err == errRetryReconciliation {
 			return err
 		}
-		reqLogger.Error(err, "failed to scale nodes",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to scale nodes")
 		return err
 	}
 
@@ -254,9 +242,7 @@ func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerA
 		if err == errRetryReconciliation {
 			return err
 		}
-		reqLogger.Error(err, "failed to remove free nodes",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to remove free nodes")
 		return err
 	}
 
@@ -270,9 +256,7 @@ func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerA
 func (con *metaController) getClusterInfo(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon) (*clusterInfo, error) {
 	info, err := con.client.getClusterInfo(masterBrokerAddress, cr.Spec.ClusterName)
 	if err != nil {
-		reqLogger.Error(err, "failed to get cluster info",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to get cluster info")
 		return nil, err
 	}
 	return info, nil
