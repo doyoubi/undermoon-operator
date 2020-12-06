@@ -148,8 +148,7 @@ func (con *coordinatorController) configSetBroker(reqLogger logr.Logger, cr *und
 		err = con.coordPool.setBrokerAddress(address, masterBrokerAddress)
 		if err != nil {
 			reqLogger.Error(err, "failed to set broker to coodinator",
-				"coordinatorAddress", address,
-				"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+				"coordinatorAddress", address)
 		}
 	}
 	return err
@@ -163,8 +162,7 @@ func (con *coordinatorController) triggerStatefulSetRollingUpdate(reqLogger logr
 
 	ready, err := con.coordiantorAllReady(coordinatorStatefulSet, coordinatorService)
 	if err != nil {
-		reqLogger.Error(err, "Failed to check coordinator readiness",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to check coordinator readiness")
 		return err
 	}
 	if !ready {
@@ -181,9 +179,7 @@ func (con *coordinatorController) updateStatefulSetHelper(reqLogger logr.Logger,
 
 	if len(coordinatorStatefulSet.ObjectMeta.ResourceVersion) == 0 {
 		err := pkgerrors.Errorf("Empty ResourceVersion when updating coordinatorStatefulSet: %s", cr.ObjectMeta.Name)
-		reqLogger.Error(err, "failed to update coordiantor statefulset. Empty ResourceVersion.",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update coordiantor statefulset. Empty ResourceVersion.")
 		return err
 	}
 
@@ -193,9 +189,7 @@ func (con *coordinatorController) updateStatefulSetHelper(reqLogger logr.Logger,
 			reqLogger.Info("Conflict on updating coordiantor StatefulSet. Try again.")
 			return errRetryReconciliation
 		}
-		reqLogger.Error(err, "failed to update coordiantor statefulset",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update coordiantor statefulset")
 		return err
 	}
 	reqLogger.Info("Successfully update coordiantor StatefulSet")

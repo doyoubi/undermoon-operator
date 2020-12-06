@@ -97,6 +97,7 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 	reqLogger = reqLogger.WithValues(
 		"UndermoonName", instance.ObjectMeta.Name,
 		"ClusterName", instance.Spec.ClusterName,
+		"Namespace", instance.Namespace,
 	)
 
 	resource, err := r.createResources(reqLogger, instance)

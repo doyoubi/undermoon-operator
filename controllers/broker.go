@@ -218,7 +218,6 @@ func brokerStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Under
 
 	if cr.Spec.UndermoonImage != container.Image {
 		reqLogger.Info("Broker image is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldImage", container.Image, "NewImage", cr.Spec.UndermoonImage,
 		)
 		return true
@@ -226,7 +225,6 @@ func brokerStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Under
 
 	if cr.Spec.UndermoonImagePullPolicy != container.ImagePullPolicy {
 		reqLogger.Info("Broker image pull policy is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldImagePullPolicy", container.ImagePullPolicy,
 			"NewImagePullPolicy", cr.Spec.UndermoonImagePullPolicy,
 		)
@@ -235,7 +233,6 @@ func brokerStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Under
 
 	if !resourceRequirementsEqual(cr.Spec.BrokerResources, container.Resources) {
 		reqLogger.Info("Broker resource is changed.",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName,
 			"OldResource", container.Resources, "NewResource", cr.Spec.BrokerResources,
 		)
 		return true

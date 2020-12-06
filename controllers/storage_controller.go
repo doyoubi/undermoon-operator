@@ -298,8 +298,7 @@ func (con *storageController) triggerStatefulSetRollingUpdate(reqLogger logr.Log
 
 	ready, err := con.storageAllReady(storageService, cr)
 	if err != nil {
-		reqLogger.Error(err, "Failed to check storage readiness",
-			"Name", cr.ObjectMeta.Name, "ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "Failed to check storage readiness")
 		return err
 	}
 	if !ready {
@@ -316,9 +315,7 @@ func (con *storageController) updateStatefulSetHelper(reqLogger logr.Logger, cr 
 
 	if len(storageStatefulSet.ObjectMeta.ResourceVersion) == 0 {
 		err := pkgerrors.Errorf("Empty ResourceVersion when updating statefulsetStatefulSet: %s", cr.ObjectMeta.Name)
-		reqLogger.Error(err, "failed to update storage statefulset. Empty ResourceVersion.",
-			"Name", cr.ObjectMeta.Name,
-			"ClusterName", cr.Spec.ClusterName)
+		reqLogger.Error(err, "failed to update storage statefulset. Empty ResourceVersion.")
 		return err
 	}
 
