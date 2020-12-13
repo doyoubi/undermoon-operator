@@ -413,7 +413,7 @@ func genServerProxyReadinessProbe(serverProxyPort uint32) *corev1.Probe {
 		// Send UMCTL READY to server proxy and
 		// see whether it returns `:1\r\n`.
 		fmt.Sprintf(
-			"[ \"$(exec 5<>/dev/tcp/localhost/%d; printf '*2\r\n$5\r\nUMCTL\r\n$5\r\nREADY\r\n' >&5; head -c 2 <&5)\" == ':1' ]",
+			"[ \"$(exec 5<>/dev/tcp/localhost/%d; printf '*2\r\n$5\r\nUMCTL\r\n$5\r\nREADY\r\n' >&5; head -c 4 <&5 | head -c 2)\" == ':1' ]",
 			serverProxyPort,
 		),
 	}
