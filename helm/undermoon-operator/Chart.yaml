@@ -23,3 +23,7 @@ version: 0.2.2
 #
 # This should be the same as the version of undermoon-operator.
 appVersion: v0.2.2
+
+maintainers:
+  - name: doyoubi
+    email: doyoubihgx@gmail.com

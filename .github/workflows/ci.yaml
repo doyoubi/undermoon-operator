@@ -1,0 +1,66 @@
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
+name: Continuous Integration
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.6'
+      - name: Checkout sources
+        uses: actions/checkout@v1
+      - name: Go fmt
+        run: go fmt ./...
+      - name: Go vet
+        run: go vet ./...
+      - name: Run golint on ./controllers
+        uses: Jerome1337/golint-action@v1.0.2
+        with:
+          golint-path: ./controllers...
+      - name: Run golint on ./api/v1alpha1
+        uses: Jerome1337/golint-action@v1.0.2
+        with:
+          golint-path: ./api/v1alpha1...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.29
+  helm:
+    name: Helm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.4.0
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.0.1
+      - name: Checkout sources
+        uses: actions/checkout@v1
+      - name: Lint operator
+        run: ct lint --charts ./helm/undermoon-operator
+      - name: Lint cluster
+        run: ct lint --charts ./helm/undermoon-cluster
+      - name: Lint checker
+        run: ct lint --charts ./chaostest/undermoon-checker
+  unittest:
+    name: Unittest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.6'
+      - name: Checkout sources
+        uses: actions/checkout@v1
+      - name: Run unittest
+        run: go test ./... -run '^(TestUnit)'

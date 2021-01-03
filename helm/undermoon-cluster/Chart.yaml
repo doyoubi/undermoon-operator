@@ -17,3 +17,6 @@ type: application
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
 version: 0.2.2
 
+maintainers:
+  - name: doyoubi
+    email: doyoubihgx@gmail.com
