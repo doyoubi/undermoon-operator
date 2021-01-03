@@ -28,8 +28,8 @@ endif
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMG_NAME):$(VERSION)
 UNDERMOON_IMG ?= $(UNDERMOON_IMG_NAME):$(UNDERMOON_IMG_VERSION)
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+# Produce new api version
+CRD_OPTIONS ?= "crd:crdVersions=v1"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -83,7 +83,10 @@ vet:
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) \
+		object:headerFile="hack/boilerplate.go.txt" \
+		paths="./..." \
+		output:crd:artifacts:config=config/crd/bases
 
 # TODO: add test when it's done.
 # Build the docker image
@@ -131,7 +134,7 @@ endif
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: manifests
+bundle: manifests kustomize
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)

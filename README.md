@@ -1,4 +1,4 @@
-# Undermoon Operator
+# Undermoon Operator ![Continuous Integration](https://github.com/doyoubi/undermoon-operator/workflows/Continuous%20Integration/badge.svg)
 Kubernetes operator for easy `Redis Cluster` management
 based on [undermoon](https://github.com/doyoubi/undermoon)
 using [operator-sdk](https://sdk.operatorframework.io/).
