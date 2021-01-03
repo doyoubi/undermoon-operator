@@ -55,6 +55,10 @@ lint:
 	helm lint helm/undermoon-operator --strict
 	helm lint helm/undermoon-cluster --strict
 	helm lint chaostest/undermoon-checker --strict
+	# Need to install https://github.com/helm/chart-testing-action
+	ct lint --charts ./helm/undermoon-operator
+	ct lint --charts ./helm/undermoon-cluster
+	ct lint --charts ./chaostest/undermoon-checker
 
 unittest:
 	go test ./... -run '^(TestUnit)'
