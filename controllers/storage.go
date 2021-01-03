@@ -144,26 +144,32 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 			Name:  "UNDERMOON_SLOWLOG_SAMPLE_RATE",
 			Value: "1000",
 		},
+		// session_channel_size is removed in v0.5
 		{
 			Name:  "UNDERMOON_SESSION_CHANNEL_SIZE",
 			Value: "4096",
 		},
+		// backend_channel_size is removed in v0.5
 		{
 			Name:  "UNDERMOON_BACKEND_CHANNEL_SIZE",
 			Value: "4096",
 		},
+		// backend_batch_min_time is removed in v0.5
 		{
 			Name:  "UNDERMOON_BACKEND_BATCH_MIN_TIME",
 			Value: "20000",
 		},
+		// backend_batch_max_time is removed in v0.5
 		{
 			Name:  "UNDERMOON_BACKEND_BATCH_MAX_TIME",
 			Value: "400000",
 		},
+		// session_batch_min_time is removed in v0.5
 		{
 			Name:  "UNDERMOON_SESSION_BATCH_MIN_TIME",
 			Value: "20000",
 		},
+		// session_batch_max_time is removed in v0.5
 		{
 			Name:  "UNDERMOON_SESSION_BATCH_MAX_TIME",
 			Value: "400000",
@@ -179,6 +185,23 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		{
 			Name:  serverProxyThreadNumberEnvName,
 			Value: strconv.FormatUint(uint64(cr.Spec.ProxyThreads), 10),
+		},
+		// The following configs are for undermoon v0.5
+		{
+			Name:  "UNDERMOON_BACKEND_BATCH_STRATEGY",
+			Value: "fixed",
+		},
+		{
+			Name:  "UNDERMOON_BACKEND_FLUSH_SIZE",
+			Value: "1024",
+		},
+		{
+			Name:  "UNDERMOON_BACKEND_LOW_FLUSH_INTERVAL",
+			Value: "200000",
+		},
+		{
+			Name:  "UNDERMOON_BACKEND_HIGH_FLUSH_INTERVAL",
+			Value: "600000",
 		},
 	}
 
