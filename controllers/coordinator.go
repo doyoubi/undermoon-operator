@@ -86,6 +86,11 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 			Name:  "UNDERMOON_PROXY_TIMEOUT",
 			Value: "3",
 		},
+		// The following configs are for undermoon v0.5
+		{
+			Name:  "UNDERMOON_ENABLE_COMPRESSION",
+			Value: "1",
+		},
 	}
 	container := corev1.Container{
 		Name:            coordinatorContainerName,
