@@ -9,6 +9,20 @@ spec:
   port: 5299
   activeRedirection: false
   proxyThreads: 2
+  migrationScanInterval: 1000
+  migrationScanCount: 16
   undermoonImage: localhost:5000/undermoon_test
   undermoonImagePullPolicy: IfNotPresent
   redisImage: redis:5.0.9
+  brokerResources: {}
+  coordinatorResources: {}
+  proxyResources: {}
+  redisResources: {}
+  affinity: {}
+  nodeSelector: {}
+  imagePullSecrets: []
+  schedulerName: ""
+  tolerations: []
+  storageVolumes: []
+  redisVolumeMounts: []
+  redisVolumeDevices: []

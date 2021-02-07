@@ -14,7 +14,7 @@ cluster:
 
 image:
   undermoonImage: doyoubi/undermoon
-  undermoonImageTag: 0.4.1-buster
+  undermoonImageTag: 0.4.3-buster
   undermoonImagePullPolicy: IfNotPresent
   redisImage: redis
   redisImageTag: 5.0.9
@@ -38,6 +38,13 @@ resources:
       # memory: "5G"
 
 affinity: {}
+nodeSelector: {}
+imagePullSecrets: []
+schedulerName: ""
+tolerations: []
+storageVolumes: []
+redisVolumeMounts: []
+redisVolumeDevices: []
 
 nameOverride: ""
 fullnameOverride: ""

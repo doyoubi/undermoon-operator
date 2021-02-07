@@ -68,7 +68,22 @@ type UndermoonSpec struct {
 	RedisResources corev1.ResourceRequirements `json:"redisResources"`
 
 	// +optional
-	Affinity *corev1.Affinity `json:"affinity"`
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// +optional
+	SchedulerName string `json:"schedulerName,omitempty"`
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// +optional
+	StorageVolumes []corev1.Volume `json:"storageVolumes,omitempty"`
+
+	// +optional
+	RedisVolumeMounts []corev1.VolumeMount `json:"redisVolumeMounts,omitempty"`
+	// +optional
+	RedisVolumeDevices []corev1.VolumeDevice `json:"redisVolumeDevices,omitempty"`
 }
 
 // UndermoonStatus defines the observed state of Undermoon
