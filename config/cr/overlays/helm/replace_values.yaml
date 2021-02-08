@@ -50,3 +50,24 @@
 - op: replace
   path: /spec/affinity
   value: "{{- toYaml .Values.affinity | nindent 4 }}"
+- op: replace
+  path: /spec/nodeSelector
+  value: "{{- toYaml .Values.nodeSelector | nindent 4 }}"
+- op: replace
+  path: /spec/imagePullSecrets
+  value: "{{- toYaml .Values.imagePullSecrets | nindent 4 }}"
+- op: replace
+  path: /spec/schedulerName
+  value: "{{ quote .Values.schedulerName }}"
+- op: replace
+  path: /spec/tolerations
+  value: "{{- toYaml .Values.tolerations | nindent 4 }}"
+- op: replace
+  path: /spec/storageVolumes
+  value: "{{- toYaml .Values.storageVolumes | nindent 4 }}"
+- op: replace
+  path: /spec/redisVolumeMounts
+  value: "{{- toYaml .Values.redisVolumeMounts | nindent 4 }}"
+- op: replace
+  path: /spec/redisVolumeDevices
+  value: "{{- toYaml .Values.redisVolumeDevices | nindent 4 }}"

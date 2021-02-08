@@ -10,13 +10,20 @@ spec:
   chunkNumber: {{ .Values.cluster.chunkNumber }}
   clusterName: {{ .Values.cluster.clusterName }}
   coordinatorResources: {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
+  imagePullSecrets: {{- toYaml .Values.imagePullSecrets | nindent 4 }}
   maxMemory: {{ .Values.cluster.maxMemory }}
   migrationScanCount: {{ .Values.cluster.migrationScanCount }}
   migrationScanInterval: {{ .Values.cluster.migrationScanInterval }}
+  nodeSelector: {{- toYaml .Values.nodeSelector | nindent 4 }}
   port: {{ .Values.cluster.port }}
   proxyResources: {{- toYaml .Values.resources.proxyResources | nindent 4 }}
   proxyThreads: {{ .Values.cluster.proxyThreads }}
   redisImage: {{ .Values.image.redisImage }}:{{ .Values.image.redisImageTag }}
   redisResources: {{- toYaml .Values.resources.redisResources | nindent 4 }}
+  redisVolumeDevices: {{- toYaml .Values.redisVolumeDevices | nindent 4 }}
+  redisVolumeMounts: {{- toYaml .Values.redisVolumeMounts | nindent 4 }}
+  schedulerName: {{ quote .Values.schedulerName }}
+  storageVolumes: {{- toYaml .Values.storageVolumes | nindent 4 }}
+  tolerations: {{- toYaml .Values.tolerations | nindent 4 }}
   undermoonImage: {{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}
   undermoonImagePullPolicy: {{ .Values.image.undermoonImagePullPolicy }}
