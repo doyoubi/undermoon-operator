@@ -32,6 +32,8 @@ install-helm-package:
 	helm install \
 		--set "image.undermoonImage=$(UNDERMOON_IMG_NAME)" \
 		--set "image.undermoonImageTag=$(UNDERMOON_IMG_VERSION)" \
+		--set "image.undermoonImagePullPolicy=IfNotPresent" \
+		--set "cluster.disableFailover=false" \
 		example-undermoon "undermoon-cluster-$(OPERATOR_HELM_VERSION).tgz"
 
 upgrade-helm-package:

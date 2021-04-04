@@ -51,6 +51,8 @@ type UndermoonSpec struct {
 	// COUNT arguments for SCAN command during migration.
 	// +kubebuilder:validation:Minimum=1
 	MigrationScanCount uint32 `json:"migrationScanCount"`
+	// Disable failover for server proxies.
+	DisableFailover bool `json:"disableFailover"`
 
 	// +kubebuilder:validation:MinLength=1
 	UndermoonImage           string            `json:"undermoonImage"`

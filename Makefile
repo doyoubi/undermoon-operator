@@ -22,7 +22,7 @@ UNDERMOON_IMG_VERSION ?= latest
 else
 IMG_NAME ?= undermoon-operator
 UNDERMOON_IMG_NAME ?= undermoon
-UNDERMOON_IMG_VERSION ?= 0.4.3
+UNDERMOON_IMG_VERSION ?= 0.4.3-buster
 endif
 
 # Image URL to use all building/pushing image targets

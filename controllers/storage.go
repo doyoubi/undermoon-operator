@@ -238,12 +238,12 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 				redisContainer1,
 				redisContainer2,
 			},
-			Affinity: addAntiAffinity(cr.Spec.Affinity, labels, cr.ObjectMeta.Namespace, storageTopologyKey),
-			NodeSelector: cr.Spec.NodeSelector,
+			Affinity:         addAntiAffinity(cr.Spec.Affinity, labels, cr.ObjectMeta.Namespace, storageTopologyKey),
+			NodeSelector:     cr.Spec.NodeSelector,
 			ImagePullSecrets: cr.Spec.ImagePullSecrets,
-			SchedulerName: cr.Spec.SchedulerName,
-			Tolerations: cr.Spec.Tolerations,
-			Volumes: cr.Spec.StorageVolumes,
+			SchedulerName:    cr.Spec.SchedulerName,
+			Tolerations:      cr.Spec.Tolerations,
+			Volumes:          cr.Spec.StorageVolumes,
 		},
 	}
 
@@ -344,8 +344,8 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 		Resources:      cr.Spec.RedisResources,
 		Lifecycle:      genPreStopHookLifeCycle([]string{"sleep", "30"}),
 		ReadinessProbe: genRedisReadinessProbe(port, redisReplicationOffsetThreshold),
-		VolumeMounts: cr.Spec.RedisVolumeMounts,
-		VolumeDevices: cr.Spec.RedisVolumeDevices,
+		VolumeMounts:   cr.Spec.RedisVolumeMounts,
+		VolumeDevices:  cr.Spec.RedisVolumeDevices,
 	}
 }
 

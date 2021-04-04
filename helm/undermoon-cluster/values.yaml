@@ -11,6 +11,7 @@ cluster:
   proxyThreads: 4
   migrationScanInterval: 1000
   migrationScanCount: 16
+  disableFailover: false
 
 image:
   undermoonImage: doyoubi/undermoon

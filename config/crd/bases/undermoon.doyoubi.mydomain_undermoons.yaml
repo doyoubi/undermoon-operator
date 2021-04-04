@@ -693,6 +693,9 @@ spec:
                       to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                     type: object
                 type: object
+              disableFailover:
+                description: Disable failover for server proxies.
+                type: boolean
               imagePullSecrets:
                 items:
                   description: LocalObjectReference contains enough information to
@@ -2103,6 +2106,7 @@ spec:
             - activeRedirection
             - chunkNumber
             - clusterName
+            - disableFailover
             - maxMemory
             - migrationScanCount
             - migrationScanInterval
