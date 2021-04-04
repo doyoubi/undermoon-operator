@@ -14,6 +14,7 @@ spec:
   maxMemory: {{ .Values.cluster.maxMemory }}
   migrationScanCount: {{ .Values.cluster.migrationScanCount }}
   migrationScanInterval: {{ .Values.cluster.migrationScanInterval }}
+  disableFailover: {{ .Values.cluster.disableFailover }}
   nodeSelector: {{- toYaml .Values.nodeSelector | nindent 4 }}
   port: {{ .Values.cluster.port }}
   proxyResources: {{- toYaml .Values.resources.proxyResources | nindent 4 }}

@@ -57,6 +57,11 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 		"undermoonClusterName": cr.Spec.ClusterName,
 	}
 
+	disableFailover := "0"
+	if cr.Spec.DisableFailover {
+		disableFailover = "1"
+	}
+
 	env := []corev1.EnvVar{
 		{
 			Name:  "RUST_LOG",
@@ -91,6 +96,10 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 			Name:  "UNDERMOON_ENABLE_COMPRESSION",
 			Value: "1",
 		},
+		{
+			Name:  "UNDERMOON_DISABLE_FAILOVER",
+			Value: disableFailover,
+		},
 	}
 	container := corev1.Container{
 		Name:            coordinatorContainerName,
@@ -105,12 +114,12 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{container},
-			Affinity:   addAntiAffinity(cr.Spec.Affinity, labels, cr.ObjectMeta.Namespace, coordinatorTopologyKey),
-			NodeSelector: cr.Spec.NodeSelector,
+			Containers:       []corev1.Container{container},
+			Affinity:         addAntiAffinity(cr.Spec.Affinity, labels, cr.ObjectMeta.Namespace, coordinatorTopologyKey),
+			NodeSelector:     cr.Spec.NodeSelector,
 			ImagePullSecrets: cr.Spec.ImagePullSecrets,
-			SchedulerName: cr.Spec.SchedulerName,
-			Tolerations: cr.Spec.Tolerations,
+			SchedulerName:    cr.Spec.SchedulerName,
+			Tolerations:      cr.Spec.Tolerations,
 		},
 	}
 

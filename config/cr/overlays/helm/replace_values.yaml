@@ -27,6 +27,9 @@
   path: /spec/migrationScanCount
   value: "{{ .Values.cluster.migrationScanCount }}"
 - op: replace
+  path: /spec/disableFailover
+  value: "{{ .Values.cluster.disableFailover }}"
+- op: replace
   path: /spec/undermoonImage
   value: "{{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}"
 - op: replace
