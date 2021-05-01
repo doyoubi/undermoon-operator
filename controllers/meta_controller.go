@@ -22,8 +22,8 @@ type metaController struct {
 	client *brokerClient
 }
 
-func newMetaController(r *UndermoonReconciler) *metaController {
-	client := newBrokerClient()
+func newMetaController(r *UndermoonReconciler, apiVersion string) *metaController {
+	client := newBrokerClient(apiVersion)
 	return &metaController{
 		r:      r,
 		client: client,

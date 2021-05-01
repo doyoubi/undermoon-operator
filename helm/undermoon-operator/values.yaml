@@ -7,5 +7,7 @@ image:
   operatorImageTag: v0.2.4
   operatorImagePullPolicy: IfNotPresent
 
+broker_api_version: "v2"
+
 nameOverride: ""
 fullnameOverride: ""

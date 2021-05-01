@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -39,10 +40,11 @@ func NewUndermoonReconciler(client client.Client, log logr.Logger, scheme *runti
 		log:    log,
 		scheme: scheme,
 	}
-	r.brokerCon = newBrokerController(r)
+	brokerAPIVersion := os.Getenv("UNDERMOON_OPERATOR_BROKER_API_VERSION")
+	r.brokerCon = newBrokerController(r, brokerAPIVersion)
 	r.coordinatorCon = newCoordinatorController(r)
 	r.storageCon = newStorageController(r)
-	r.metaCon = newMetaController(r)
+	r.metaCon = newMetaController(r, brokerAPIVersion)
 	return r
 }
 
