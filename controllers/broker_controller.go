@@ -20,8 +20,8 @@ type memBrokerController struct {
 	client *brokerClient
 }
 
-func newBrokerController(r *UndermoonReconciler) *memBrokerController {
-	client := newBrokerClient()
+func newBrokerController(r *UndermoonReconciler, apiVersion string) *memBrokerController {
+	client := newBrokerClient(apiVersion)
 	return &memBrokerController{r: r, client: client}
 }
 
