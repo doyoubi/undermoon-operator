@@ -46,6 +46,7 @@ tolerations: []
 storageVolumes: []
 redisVolumeMounts: []
 redisVolumeDevices: []
+volumeClaimTemplates: []
 
 nameOverride: ""
 fullnameOverride: ""

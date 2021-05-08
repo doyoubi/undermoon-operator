@@ -10,11 +10,11 @@ spec:
   chunkNumber: {{ .Values.cluster.chunkNumber }}
   clusterName: {{ .Values.cluster.clusterName }}
   coordinatorResources: {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
+  disableFailover: {{ .Values.cluster.disableFailover }}
   imagePullSecrets: {{- toYaml .Values.imagePullSecrets | nindent 4 }}
   maxMemory: {{ .Values.cluster.maxMemory }}
   migrationScanCount: {{ .Values.cluster.migrationScanCount }}
   migrationScanInterval: {{ .Values.cluster.migrationScanInterval }}
-  disableFailover: {{ .Values.cluster.disableFailover }}
   nodeSelector: {{- toYaml .Values.nodeSelector | nindent 4 }}
   port: {{ .Values.cluster.port }}
   proxyResources: {{- toYaml .Values.resources.proxyResources | nindent 4 }}
@@ -28,3 +28,4 @@ spec:
   tolerations: {{- toYaml .Values.tolerations | nindent 4 }}
   undermoonImage: {{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}
   undermoonImagePullPolicy: {{ .Values.image.undermoonImagePullPolicy }}
+  volumeClaimTemplates: {{- toYaml .Values.volumeClaimTemplates | nindent 4 }}

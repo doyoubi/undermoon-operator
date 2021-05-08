@@ -86,6 +86,8 @@ type UndermoonSpec struct {
 	RedisVolumeMounts []corev1.VolumeMount `json:"redisVolumeMounts,omitempty"`
 	// +optional
 	RedisVolumeDevices []corev1.VolumeDevice `json:"redisVolumeDevices,omitempty"`
+	// +optional
+	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
 // UndermoonStatus defines the observed state of Undermoon
