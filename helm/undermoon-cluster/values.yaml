@@ -15,7 +15,7 @@ cluster:
 
 image:
   undermoonImage: doyoubi/undermoon
-  undermoonImageTag: 0.4.3-buster
+  undermoonImageTag: 0.4.5-buster
   undermoonImagePullPolicy: IfNotPresent
   redisImage: redis
   redisImageTag: 5.0.9

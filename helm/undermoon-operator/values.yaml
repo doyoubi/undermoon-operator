@@ -4,7 +4,7 @@
 
 image:
   operatorImage: doyoubi/undermoon-operator
-  operatorImageTag: v0.2.4
+  operatorImageTag: v0.2.5
   operatorImagePullPolicy: IfNotPresent
 
 broker_api_version: "v2"
