@@ -6,6 +6,23 @@ import crc16
 from loguru import logger
 
 
+lua_mset_script = '''
+for i, k in pairs(KEYS) do
+  redis.call('SET', k, ARGV[i])
+end
+return "OK"
+'''
+
+
+lua_mget_script = '''
+local values = {}
+for i, k in pairs(KEYS) do
+  values[i] = redis.call('GET', k)
+end
+return values
+'''
+
+
 class RedisClientError(Exception):
     pass
 
@@ -60,6 +77,12 @@ class AioRedisClusterClient:
     async def mset(self, *kvs):
         return await self.exec(lambda client: client.mset(*kvs))
 
+    async def lua_mget(self, keys):
+        return await self.exec(lambda client: client.eval(lua_mget_script, keys))
+
+    async def lua_mset(self, keys, args):
+        return await self.exec(lambda client: client.eval(lua_mset_script, keys, args))
+
     async def exec(self, send_func):
         address = random.choice(self.startup_nodes)
         client = await self.get_or_create_client(address)
@@ -74,14 +97,16 @@ class AioRedisClusterClient:
         # so it needs another additional redirection.
         RETRY_TIMES = 5
         tried_addressess = [address]
+        inner_infos = []
         for i in range(0, RETRY_TIMES):
             try:
                 return await send_func(client), address
             except Exception as e:
                 if "MOVED" not in str(e):
                     raise RedisClientError("{}: {} {}".format(address, type(e), e))
+                inner_infos.append((address, await client.execute('UMCTL', 'INFO')))
                 if i == RETRY_TIMES - 1:
-                    logger.error("exceed max redirection times: {}", tried_addressess)
+                    logger.error("exceed max redirection times: {} {}", tried_addressess, inner_infos)
                     raise RedisClientError("{}: {}".format(address, e))
                 former_address = address
                 address = self.parse_moved(str(e))
