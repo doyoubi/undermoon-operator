@@ -1,5 +1,5 @@
 # Current Operator version
-VERSION ?= v0.2.4
+VERSION ?= v0.2.5
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 # Options for 'bundle-build'
@@ -22,7 +22,7 @@ UNDERMOON_IMG_VERSION ?= latest
 else
 IMG_NAME ?= undermoon-operator
 UNDERMOON_IMG_NAME ?= undermoon
-UNDERMOON_IMG_VERSION ?= 0.4.3-buster
+UNDERMOON_IMG_VERSION ?= 0.4.5-buster
 endif
 
 # Image URL to use all building/pushing image targets
