@@ -21,6 +21,9 @@ class KeyValueChecker:
         self.client = client
         self.kvs = set()
         self.deleted_kvs = set()
+        self.lua_keys = ['test:lua:{}:{{tag}}:{}:{}'.format(
+            checker_name, int(time.time()), i) for i in range(10)]
+        self.lua_value = None
 
     async def loop_check(self):
         while True:
@@ -35,11 +38,11 @@ class KeyValueChecker:
             n = random.randint(0, 10)
             if n < 4:
                 await asyncio.gather(
-                    self.check_set(), self.check_mset(),
+                    self.check_set(), self.check_mset(), self.check_lua_mset(),
                 )
             elif n < 8:
                 await asyncio.gather(
-                    self.check_get(), self.check_mget(),
+                    self.check_get(), self.check_mget(), self.check_lua_mget(),
                 )
             else:
                 await self.check_del()
@@ -181,6 +184,22 @@ class KeyValueChecker:
                 raise
             self.kvs.difference_update(ks)
             self.deleted_kvs.update(ks)
+
+    async def check_lua_mset(self):
+        self.lua_value = str(time.time()).encode('utf-8')
+        values = [self.lua_value for i in range(len(self.lua_keys))]
+        await self.client.lua_mset(self.lua_keys, values)
+
+    async def check_lua_mget(self):
+        values, address = await self.client.lua_mget(self.lua_keys)
+        inconsistent = False
+        for k, v in zip(self.lua_keys, values):
+            if v != self.lua_value:
+                inconsistent = True
+                logger.error("REDIS_TEST: incorrect value for key {}: {} != {}",
+                    k, v, self.lua_value)
+        if inconsistent:
+            raise CheckerError("INCONSISTENT DATA")
 
 
 class RandomChecker:
