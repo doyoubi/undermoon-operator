@@ -74,3 +74,6 @@
 - op: replace
   path: /spec/redisVolumeDevices
   value: "{{- toYaml .Values.redisVolumeDevices | nindent 4 }}"
+- op: replace
+  path: /spec/volumeClaimTemplates
+  value: "{{- toYaml .Values.volumeClaimTemplates | nindent 4 }}"

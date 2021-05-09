@@ -27,3 +27,4 @@ spec:
   storageVolumes: []
   redisVolumeMounts: []
   redisVolumeDevices: []
+  volumeClaimTemplates: []

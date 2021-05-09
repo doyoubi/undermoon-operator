@@ -260,11 +260,12 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 			Labels:    labels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Selector:            &metav1.LabelSelector{MatchLabels: labels},
-			ServiceName:         StorageServiceName(cr.ObjectMeta.Name),
-			Replicas:            &replicaNum,
-			Template:            podSpec,
-			PodManagementPolicy: appsv1.ParallelPodManagement,
+			Selector:             &metav1.LabelSelector{MatchLabels: labels},
+			ServiceName:          StorageServiceName(cr.ObjectMeta.Name),
+			Replicas:             &replicaNum,
+			Template:             podSpec,
+			PodManagementPolicy:  appsv1.ParallelPodManagement,
+			VolumeClaimTemplates: cr.Spec.VolumeClaimTemplates,
 		},
 	}
 }
@@ -344,6 +345,7 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 		Resources:      cr.Spec.RedisResources,
 		Lifecycle:      genPreStopHookLifeCycle([]string{"sleep", "30"}),
 		ReadinessProbe: genRedisReadinessProbe(port, redisReplicationOffsetThreshold),
+		WorkingDir:     fmt.Sprintf("/data/%d", index),
 		VolumeMounts:   cr.Spec.RedisVolumeMounts,
 		VolumeDevices:  cr.Spec.RedisVolumeDevices,
 	}
