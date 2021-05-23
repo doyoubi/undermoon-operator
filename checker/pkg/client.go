@@ -32,44 +32,44 @@ func NewCheckerClusterClient(startupNode string, timeout time.Duration, debug bo
 }
 
 // Get implements GET command
-func (client *CheckerClusterClient) Get(key string) (*string, error) {
-	v, err := client.Exec(func(c *redis.Client) (interface{}, error) {
+func (client *CheckerClusterClient) Get(key string) (*string, string, error) {
+	v, address, err := client.Exec(func(c *redis.Client) (interface{}, error) {
 		return c.Get(client.ctx, key).Result()
 	})
 	if err == redis.Nil {
-		return nil, nil
+		return nil, address, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, address, err
 	}
 	s := v.(string)
-	return &s, err
+	return &s, address, err
 }
 
 // Set implements SET command
-func (client *CheckerClusterClient) Set(key, value string) error {
-	_, err := client.Exec(func(c *redis.Client) (interface{}, error) {
+func (client *CheckerClusterClient) Set(key, value string) (string, error) {
+	_, address, err := client.Exec(func(c *redis.Client) (interface{}, error) {
 		return c.Set(client.ctx, key, value, 0).Result()
 	})
-	return err
+	return address, err
 }
 
 // Del implements DEL command
-func (client *CheckerClusterClient) Del(key, value string) error {
-	_, err := client.Exec(func(c *redis.Client) (interface{}, error) {
-		return c.Del(client.ctx, key).Result()
+func (client *CheckerClusterClient) Del(keys []string) (string, error) {
+	_, address, err := client.Exec(func(c *redis.Client) (interface{}, error) {
+		return c.Del(client.ctx, keys...).Result()
 	})
-	return err
+	return address, err
 }
 
 // MGet implements MGET command
-func (client *CheckerClusterClient) MGet(keys []string) ([]*string, error) {
-	vs, err := client.Exec(func(c *redis.Client) (interface{}, error) {
+func (client *CheckerClusterClient) MGet(keys []string) ([]*string, string, error) {
+	vs, address, err := client.Exec(func(c *redis.Client) (interface{}, error) {
 		return c.MGet(client.ctx, keys...).Result()
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, address, err
 	}
 
 	vals := vs.([]interface{})
@@ -82,26 +82,30 @@ func (client *CheckerClusterClient) MGet(keys []string) ([]*string, error) {
 		s := v.(string)
 		values = append(values, &s)
 	}
-	return values, err
+	return values, address, err
 }
 
 // MSet implements MSET command
-func (client *CheckerClusterClient) MSet(values []string) error {
-	_, err := client.Exec(func(c *redis.Client) (interface{}, error) {
+func (client *CheckerClusterClient) MSet(values []string) (string, error) {
+	_, address, err := client.Exec(func(c *redis.Client) (interface{}, error) {
 		vs := make([]interface{}, 0, len(values))
 		for _, v := range values {
 			vs = append(vs, v)
 		}
 		return c.MSet(client.ctx, vs...).Result()
 	})
-	return err
+	return address, err
 }
 
 // LuaMGet implements atomic MGET command using EVAL
-func (client *CheckerClusterClient) LuaMGet(keys []string) ([]*string, error) {
-	vs, err := client.Exec(func(c *redis.Client) (interface{}, error) {
-		return c.Eval(client.ctx, luaMSetScript, keys).Result()
+func (client *CheckerClusterClient) LuaMGet(keys []string) ([]*string, string, error) {
+	vs, address, err := client.Exec(func(c *redis.Client) (interface{}, error) {
+		return c.Eval(client.ctx, luaMGetScript, keys).Result()
 	})
+
+	if err != nil {
+		return nil, address, err
+	}
 
 	vals := vs.([]interface{})
 	values := make([]*string, 0, len(vals))
@@ -113,23 +117,23 @@ func (client *CheckerClusterClient) LuaMGet(keys []string) ([]*string, error) {
 		s := v.(string)
 		values = append(values, &s)
 	}
-	return values, err
+	return values, address, err
 }
 
 // LuaMSet implements atomic MSET command using EVAL
-func (client *CheckerClusterClient) luaMSet(keys []string, values []string) error {
-	_, err := client.Exec(func(c *redis.Client) (interface{}, error) {
+func (client *CheckerClusterClient) luaMSet(keys []string, values []string) (string, error) {
+	_, address, err := client.Exec(func(c *redis.Client) (interface{}, error) {
 		vs := make([]interface{}, 0, len(values))
 		for _, v := range values {
 			vs = append(vs, v)
 		}
 		return c.Eval(client.ctx, luaMSetScript, keys, vs...).Result()
 	})
-	return err
+	return address, err
 }
 
 // Exec can be used to send command with redirection supported
-func (client *CheckerClusterClient) Exec(sendFunc func(*redis.Client) (interface{}, error)) (interface{}, error) {
+func (client *CheckerClusterClient) Exec(sendFunc func(*redis.Client) (interface{}, error)) (interface{}, string, error) {
 	address := client.startupNode
 	c := client.getOrCreateClient(address)
 
@@ -140,18 +144,18 @@ func (client *CheckerClusterClient) Exec(sendFunc func(*redis.Client) (interface
 	for i := 0; i != maxRetryTimes; i++ {
 		r, err := sendFunc(c)
 		if err == nil {
-			return r, nil
+			return r, address, nil
 		}
 
 		address, err = client.parseMoved(err)
 		if err != nil {
-			return nil, err
+			return nil, address, err
 		}
 
 		if client.debug && i != 0 {
 			umctlInfo, err := client.sendUmctlInfo(client.ctx, c)
 			if err != nil {
-				return nil, err
+				return nil, address, err
 			}
 			innerInfos = append(innerInfos, umctlInfo)
 		}
@@ -165,8 +169,7 @@ func (client *CheckerClusterClient) Exec(sendFunc func(*redis.Client) (interface
 	}
 
 	err := fmt.Errorf("exceed max redirection times: %+v %+v", triedAddressess, innerInfos)
-	log.Err(err).Send()
-	return nil, err
+	return nil, address, err
 }
 
 func (client *CheckerClusterClient) getOrCreateClient(address string) *redis.Client {
