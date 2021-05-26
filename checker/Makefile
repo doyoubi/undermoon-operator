@@ -3,5 +3,5 @@ build:
 
 run:
 	$(MAKE) build
-	./checker
+	./checker -a localhost:5299 --ops 1000
 

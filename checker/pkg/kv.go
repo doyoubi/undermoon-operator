@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/time/rate"
 )
 
 const maxKeysNum = 10000
@@ -20,6 +21,7 @@ var errExit = errors.New("exit error")
 type kvChecker struct {
 	id     int
 	client *CheckerClusterClient
+	rl *rate.Limiter
 
 	keys        map[string]struct{}
 	groupedKeys map[int]map[string]struct{}
@@ -28,7 +30,7 @@ type kvChecker struct {
 	luaValue    *string
 }
 
-func newKVChecker(id int, client *CheckerClusterClient) *kvChecker {
+func newKVChecker(id int, client *CheckerClusterClient, ops int64) *kvChecker {
 	const luaKeysNum = 10
 	luaKeys := make([]string, 0, luaKeysNum)
 	for i := 0; i != luaKeysNum; i++ {
@@ -36,9 +38,14 @@ func newKVChecker(id int, client *CheckerClusterClient) *kvChecker {
 		luaKeys = append(luaKeys, k)
 	}
 
+	r := time.Second / time.Duration(ops)
+	const burst = 100
+	rl := rate.NewLimiter(rate.Every(r), burst)
+
 	return &kvChecker{
 		id:          id,
 		client:      client,
+		rl: rl,
 		keys:        make(map[string]struct{}),
 		groupedKeys: make(map[int]map[string]struct{}),
 		deletedKeys: make(map[string]struct{}),
@@ -59,43 +66,47 @@ func (ck *kvChecker) loopCheck(ctx context.Context) error {
 			return nil
 		}
 
-		if err := ck.checkKeyValue(); err != nil {
+		if err := ck.checkKeyValue(ctx); err != nil {
 			return err
 		}
-		time.Sleep(time.Second)
 	}
 }
 
-func (ck *kvChecker) checkKeyValue() error {
+func (ck *kvChecker) checkKeyValue(ctx context.Context) error {
 	n := rand.Int() % 7
 	switch n {
 	case 0:
-		return ck.checkSet()
+		return ck.checkSet(ctx)
 	case 1:
-		return ck.checkMGet()
+		return ck.checkMGet(ctx)
 	case 2:
-		return ck.checkLuaMSet()
+		return ck.checkLuaMSet(ctx)
 	case 3:
-		return ck.checkGet()
+		return ck.checkGet(ctx)
 	case 4:
-		return ck.checkMSet()
+		return ck.checkMSet(ctx)
 	case 5:
-		return ck.checkLuaMGet()
+		return ck.checkLuaMGet(ctx)
 	case 6:
-		return ck.checkDel()
+		return ck.checkDel(ctx)
 	default:
 	}
 
 	return nil
 }
 
-func (ck *kvChecker) checkSet() error {
+func (ck *kvChecker) checkSet(ctx context.Context) error {
 	if len(ck.keys) >= maxKeysNum {
 		return nil
 	}
 
+	const keysNum = 10
+	if err := ck.rl.WaitN(ctx, keysNum); err != nil {
+		return err
+	}
+
 	t := strconv.FormatInt(int64(time.Now().Nanosecond()), 10)
-	for i := 0; i != 10; i++ {
+	for i := 0; i != keysNum; i++ {
 		k := fmt.Sprintf("test:%d:%s:%s", ck.id, t, i)
 		address, err := ck.client.Set(k, k)
 		if err != nil {
@@ -119,12 +130,16 @@ func (ck *kvChecker) addKey(slot int, k string) {
 	ck.groupedKeys[slot][k] = struct{}{}
 }
 
-func (ck *kvChecker) checkMSet() error {
+func (ck *kvChecker) checkMSet(ctx context.Context) error {
 	if len(ck.keys) >= maxKeysNum {
 		return nil
 	}
 
 	const keysNum = 10
+	if err := ck.rl.Wait(ctx); err != nil {
+		return err
+	}
+
 	t := strconv.FormatInt(int64(time.Now().Nanosecond()), 10)
 	keys := make([]string, 0, keysNum)
 	slot := rand.Int() % slotNumber
@@ -151,17 +166,21 @@ func (ck *kvChecker) checkMSet() error {
 	return nil
 }
 
-func (ck *kvChecker) checkGet() error {
-	if err := ck.checkGetExistingKey(); err != nil {
+func (ck *kvChecker) checkGet(ctx context.Context) error {
+	if err := ck.checkGetExistingKey(ctx); err != nil {
 		return err
 	}
-	return ck.checkGetDeletedKey()
+	return ck.checkGetDeletedKey(ctx)
 }
 
-func (ck *kvChecker) checkGetExistingKey() error {
-	const checkKeys = 100
+func (ck *kvChecker) checkGetExistingKey(ctx context.Context) error {
+	const keysNum = 10
+	if err := ck.rl.WaitN(ctx, keysNum); err != nil {
+		return err
+	}
+
 	l := len(ck.keys)
-	k := (l + checkKeys - 1) / checkKeys
+	k := (l + keysNum - 1) / keysNum
 	i := 0
 	for key := range ck.keys {
 		if (i % k) != 0 {
@@ -183,10 +202,14 @@ func (ck *kvChecker) checkGetExistingKey() error {
 	return nil
 }
 
-func (ck *kvChecker) checkGetDeletedKey() error {
-	const checkKeys = 100
+func (ck *kvChecker) checkGetDeletedKey(ctx context.Context) error {
+	const keysNum = 10
+	if err := ck.rl.WaitN(ctx, keysNum); err != nil {
+		return err
+	}
+
 	l := len(ck.deletedKeys)
-	k := (l + checkKeys - 1) / checkKeys
+	k := (l + keysNum - 1) / keysNum
 	i := 0
 	for key := range ck.deletedKeys {
 		if (i % k) != 0 {
@@ -208,10 +231,14 @@ func (ck *kvChecker) checkGetDeletedKey() error {
 	return nil
 }
 
-func (ck *kvChecker) checkMGet() error {
+func (ck *kvChecker) checkMGet(ctx context.Context) error {
 	_, keys := ck.getKeysInSameSlot()
 	if len(keys) == 0 {
 		return nil
+	}
+
+	if err := ck.rl.Wait(ctx); err != nil {
+		return err
 	}
 
 	values, address, err := ck.client.MGet(keys)
@@ -257,7 +284,7 @@ func (ck *kvChecker) getKeysInSameSlot() (int, []string) {
 	return 0, nil
 }
 
-func (ck *kvChecker) checkDel() error {
+func (ck *kvChecker) checkDel(ctx context.Context) error {
 	const maxDelKeys = 10
 	slot, keys := ck.getKeysInSameSlot()
 	if len(keys) == 0 {
@@ -265,6 +292,10 @@ func (ck *kvChecker) checkDel() error {
 	}
 	if len(keys) > maxDelKeys {
 		keys = keys[:maxDelKeys]
+	}
+
+	if err := ck.rl.Wait(ctx); err != nil {
+		return err
 	}
 
 	address, err := ck.client.Del(keys)
@@ -282,9 +313,13 @@ func (ck *kvChecker) checkDel() error {
 	return nil
 }
 
-func (ck *kvChecker) checkLuaMSet() error {
+func (ck *kvChecker) checkLuaMSet(ctx context.Context) error {
 	keys := ck.luaKeys
 	values := make([]string, 0, len(keys))
+
+	if err := ck.rl.WaitN(ctx, len(keys)); err != nil {
+		return err
+	}
 
 	t := strconv.FormatInt(int64(time.Now().Nanosecond()), 10)
 	value := fmt.Sprintf("%s:%s", t, uuid.NewString())
@@ -301,13 +336,19 @@ func (ck *kvChecker) checkLuaMSet() error {
 	return nil
 }
 
-func (ck *kvChecker) checkLuaMGet() error {
+func (ck *kvChecker) checkLuaMGet(ctx context.Context) error {
 	keys := ck.luaKeys
+
+	if err := ck.rl.WaitN(ctx, len(keys)); err != nil {
+		return err
+	}
+
 	values, address, err := ck.client.LuaMGet(keys)
 	if err != nil {
 		log.Err(err).Str("node", address).Msg("failed to Lua MGet")
 		return err
 	}
+
 	for i := 0; i != len(keys); i++ {
 		// Both nil or equal
 		if values[i] == ck.luaValue || *values[i] == *ck.luaValue {
@@ -328,7 +369,7 @@ func (ck *kvChecker) checkLuaMGet() error {
 }
 
 // RunKvCheckerService runs the kvChecker
-func RunKvCheckerService(ctx context.Context, startupNode string) {
+func RunKvCheckerService(ctx context.Context, startupNode string, ops int64) {
 	const checkerNum = 3
 
 	group, ctx := errgroup.WithContext(ctx)
@@ -337,7 +378,7 @@ func RunKvCheckerService(ctx context.Context, startupNode string) {
 		group.Go(func() error {
 			c := NewCheckerClusterClient(startupNode, time.Second, false)
 			for {
-				ck := newKVChecker(id, c)
+				ck := newKVChecker(id, c, ops)
 				if err := ck.loopCheck(ctx); err != nil {
 					return err
 				}
