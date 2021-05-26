@@ -12,7 +12,7 @@ import (
 
 type options struct {
 	Address string `short:"a" long:"address" description:"A Redis address of the cluster"`
-	OPS int64 `long:"ops" description:"Commands sent per seconds"`
+	OPS     int64  `long:"ops" description:"Commands sent per seconds"`
 }
 
 func main() {

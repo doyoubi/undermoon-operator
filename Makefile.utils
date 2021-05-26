@@ -62,6 +62,7 @@ lint:
 	ct lint --charts ./helm/undermoon-operator
 	ct lint --charts ./helm/undermoon-cluster
 	ct lint --charts ./chaostest/undermoon-checker
+	cd checker && $(MAKE) lint
 
 unittest:
 	go test ./... -run '^(TestUnit)'
