@@ -154,6 +154,11 @@ docker-build-checker-image:
 	docker tag undermoon_checker localhost:5000/undermoon_checker
 	docker push localhost:5000/undermoon_checker
 
+docker-build-go-checker-image:
+	docker image build -f checker/Dockerfile -t undermoon_checker .
+	docker tag undermoon_checker localhost:5000/undermoon_checker
+	docker push localhost:5000/undermoon_checker
+
 install-undermoon-checker:
 	helm package chaostest/undermoon-checker
 	helm install example-checker "undermoon-checker-$(CHECKER_HELM_VERSION).tgz"

@@ -11,3 +11,6 @@ undermoonServiceAddress: example-undermoon:5299
 
 nameOverride: ""
 fullnameOverride: ""
+
+golangChecker: false
+ops: 10000
