@@ -62,6 +62,7 @@ lint:
 	ct lint --charts ./helm/undermoon-operator
 	ct lint --charts ./helm/undermoon-cluster
 	ct lint --charts ./chaostest/undermoon-checker
+	cd checker && $(MAKE) lint
 
 unittest:
 	go test ./... -run '^(TestUnit)'
@@ -150,6 +151,11 @@ run-redis-cli:
 
 docker-build-checker-image:
 	docker image build -f chaostest/Dockerfile -t undermoon_checker .
+	docker tag undermoon_checker localhost:5000/undermoon_checker
+	docker push localhost:5000/undermoon_checker
+
+docker-build-go-checker-image:
+	docker image build -f checker/Dockerfile -t undermoon_checker .
 	docker tag undermoon_checker localhost:5000/undermoon_checker
 	docker push localhost:5000/undermoon_checker
 

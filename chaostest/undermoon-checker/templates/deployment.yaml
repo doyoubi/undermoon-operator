@@ -17,9 +17,17 @@ spec:
           image: "{{ .Values.image.checkerImage }}"
           imagePullPolicy: {{ .Values.image.checkerImagePullPolicy }}
           command:
+          {{- if .Values.golangChecker }}
+          - checker
+          - --address
+          - "{{ .Values.undermoonServiceAddress }}"
+          - --ops
+          - "{{ .Values.ops }}"
+          {{- else }}
           - python
           - {{ include "undermoon-checker.test_script" . }}
           - "{{ .Values.undermoonServiceAddress }}"
+          {{- end }}
           # For debugging
           # - sleep
           # - "10000000"
