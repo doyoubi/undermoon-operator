@@ -4,39 +4,81 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
+	"io/ioutil"
 	"net"
+	"strings"
+	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 type monitorManager struct {
-	srcRedis monitorClient
-	dstRedis monitorClient
+	clients []*monitorClient
+}
+
+func newMonitorManager(addresses []string, bufCap int) *monitorManager {
+	clients := make([]*monitorClient, 0, len(addresses))
+	for _, addr := range addresses {
+		clients = append(clients, newMonitorClient(addr, bufCap))
+	}
+	return &monitorManager{
+		clients: clients,
+	}
+}
+
+func (m *monitorManager) run(ctx context.Context) error {
+	group, ctx := errgroup.WithContext(ctx)
+	for _, c := range m.clients {
+		client := c
+		group.Go(func() error {
+			return client.run(ctx)
+		})
+	}
+	return group.Wait()
+}
+
+func (m *monitorManager) dump() error {
+	for _, c := range m.clients {
+		data := c.getData()
+		fname := fmt.Sprintf("monitor-%s", c.addr)
+		err := ioutil.WriteFile(fname, []byte(strings.Join(data, "")), 0644)
+		if err != nil {
+			log.Err(err).Str("address", c.addr).Msg("failed to dump monitor data")
+			return err
+		}
+	}
+	log.Info().Msg("successfully dump MONITOR data")
+	return nil
 }
 
 type monitorClient struct {
 	addr string
-	data *ringBuf
+	buf  *ringBuf
+	lock sync.Mutex
 }
 
 func newMonitorClient(addr string, bufCap int) *monitorClient {
 	return &monitorClient{
 		addr: addr,
-		data: newRingBuf(bufCap),
+		buf:  newRingBuf(bufCap),
+		lock: sync.Mutex{},
 	}
 }
 
-func (c *monitorClient) run(ctx context.Context) {
+func (c *monitorClient) run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			return errExit
 		default:
 		}
 
 		if err := c.runMonitor(ctx); err != nil {
 			log.Err(err).Msg("MONITOR error")
 		}
+		time.Sleep(time.Second)
 	}
 }
 
@@ -45,14 +87,20 @@ func (c *monitorClient) runMonitor(ctx context.Context) error {
 	conn, err := net.DialTimeout("tcp", c.addr, timeout)
 	if err != nil {
 		log.Err(err).Str("address", c.addr).Msg("failed to connect to redis")
+		return err
 	}
 	defer conn.Close()
 
-	monitorCmd := "*1\r\nMONITOR\r\n"
+	monitorCmd := "*1\r\n$7\r\nMONITOR\r\n"
 	w := bufio.NewWriter(conn)
 	_, err = w.WriteString(monitorCmd)
 	if err != nil {
-		log.Err(err).Str("address", c.addr).Msg("failed to connect to redis")
+		log.Err(err).Str("address", c.addr).Msg("failed to send MONITOR command to redis")
+		return err
+	}
+	err = w.Flush()
+	if err != nil {
+		log.Err(err).Str("address", c.addr).Msg("failed to flush MONITOR command to redis")
 		return err
 	}
 
@@ -82,8 +130,17 @@ func (c *monitorClient) runMonitor(ctx context.Context) error {
 			log.Err(err).Str("address", c.addr).Msg("failed to read MONITOR line")
 			return err
 		}
-		c.data.add(line)
+
+		c.lock.Lock()
+		c.buf.add(line)
+		c.lock.Unlock()
 	}
+}
+
+func (c *monitorClient) getData() []string {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.buf.data()
 }
 
 // Not thread-safe

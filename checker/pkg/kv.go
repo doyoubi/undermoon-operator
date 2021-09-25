@@ -335,7 +335,7 @@ func (ck *kvChecker) checkLuaMGet(ctx context.Context) error {
 }
 
 // RunKvCheckerService runs the kvChecker
-func RunKvCheckerService(ctx context.Context, startupNode string, ops int64) {
+func RunKvCheckerService(ctx context.Context, startupNode string, ops int64, monitorAddresses []string, monitorBufSize int) {
 	const checkerNum = 3
 
 	st := newSlotTags()
@@ -355,7 +355,26 @@ func RunKvCheckerService(ctx context.Context, startupNode string, ops int64) {
 		})
 	}
 
+	monitorEnabled := monitorBufSize > 1 && len(monitorAddresses) > 0
+	mon := newMonitorManager(monitorAddresses, monitorBufSize)
+	if monitorEnabled {
+		log.Info().Strs("addresses", monitorAddresses).Msg("monitor is enabled")
+		go func() {
+			err := mon.run(ctx)
+			log.Err(err).Msg("MONITOR exited")
+		}()
+	}
+
 	_ = group.Wait()
+
+	for monitorEnabled {
+		err := mon.dump()
+		if err == nil {
+			break
+		}
+		log.Err(err).Msg("failed to dump MONITOR data")
+		time.Sleep(5 * time.Second)
+	}
 
 	log.Info().Msg("checker stopped but it will keep running so that we can see the logs")
 	for {
