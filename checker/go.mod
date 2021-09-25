@@ -9,6 +9,7 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/onsi/gomega v1.12.0 // indirect
 	github.com/rs/zerolog v1.22.0
+	github.com/stretchr/testify v1.7.0
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
 	gonum.org/v1/gonum v0.9.1

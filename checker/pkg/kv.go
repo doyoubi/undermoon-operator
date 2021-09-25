@@ -275,7 +275,7 @@ func (ck *kvChecker) checkDel(ctx context.Context) error {
 
 	address, err := ck.client.Del(keys)
 	if err != nil {
-		log.Err(err).Str("node", address).Msg("failed to DEL")
+		log.Err(err).Str("node", address).Strs("keys", keys).Msg("failed to DEL")
 		return err
 	}
 
@@ -301,7 +301,7 @@ func (ck *kvChecker) checkLuaMSet(ctx context.Context) error {
 	}
 	address, err := ck.client.luaMSet(keys, values)
 	if err != nil {
-		log.Err(err).Str("node", address).Msg("failed to Lua MSet")
+		log.Err(err).Str("node", address).Strs("keys", keys).Msg("failed to Lua MSet")
 		return err
 	}
 
@@ -318,7 +318,7 @@ func (ck *kvChecker) checkLuaMGet(ctx context.Context) error {
 
 	values, address, err := ck.client.LuaMGet(keys)
 	if err != nil {
-		log.Err(err).Str("node", address).Msg("failed to Lua MGet")
+		log.Err(err).Str("node", address).Strs("keys", keys).Msg("failed to Lua MGet")
 		return err
 	}
 
