@@ -11,8 +11,10 @@ import (
 )
 
 type options struct {
-	Address string `short:"a" long:"address" description:"A Redis address of the cluster"`
-	OPS     int64  `long:"ops" description:"Commands sent per seconds"`
+	Address          string   `short:"a" long:"address" description:"A Redis addresses of the cluster"`
+	MonitorAddresses []string `short:"m" long:"monitor-address" description:"Redis addresses for MONITOR command"`
+	OPS              int64    `long:"ops" description:"Commands sent per seconds"`
+	MonitorBuf       int      `long:"monitor-buf" description:"MONITOR command buffer size, 0 to disable"`
 }
 
 func main() {
@@ -23,5 +25,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	pkg.RunKvCheckerService(context.Background(), opts.Address, opts.OPS)
+	pkg.RunKvCheckerService(context.Background(), opts.Address, opts.OPS, opts.MonitorAddresses, opts.MonitorBuf)
 }

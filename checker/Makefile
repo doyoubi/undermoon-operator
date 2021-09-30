@@ -11,3 +11,6 @@ run:
 	$(MAKE) build
 	./checker -a localhost:5299 --ops 10000
 
+localtest:
+	./checker -a localhost:6001 -m localhost:7001 -m localhost:7002 --ops 1000 --monitor-buf 100000
+
