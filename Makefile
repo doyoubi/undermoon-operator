@@ -21,8 +21,8 @@ UNDERMOON_IMG_NAME ?= $(DEBUG_UNDERMOON_IMG_NAME)
 UNDERMOON_IMG_VERSION ?= latest
 else
 IMG_NAME ?= undermoon-operator
-UNDERMOON_IMG_NAME ?= undermoon
-UNDERMOON_IMG_VERSION ?= 0.4.5-buster
+UNDERMOON_IMG_NAME ?= doyoubi/undermoon
+UNDERMOON_IMG_VERSION ?= 0.6.0-buster
 endif
 
 # Image URL to use all building/pushing image targets

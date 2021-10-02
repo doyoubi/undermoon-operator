@@ -40,7 +40,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: UNDERMOON_OPERATOR_BROKER_API_VERSION
-          value: '{{ .Values.broker_api_version | default "v2" }}'
+          value: '{{ .Values.broker_api_version | default "v3" }}'
         image: '{{ .Values.image.operatorImage }}:{{ .Values.image.operatorImageTag }}'
         imagePullPolicy: '{{ .Values.image.operatorImagePullPolicy }}'
         name: manager
