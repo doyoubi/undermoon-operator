@@ -189,19 +189,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		// The following configs are for undermoon v0.5
 		{
 			Name:  "UNDERMOON_BACKEND_BATCH_STRATEGY",
-			Value: "fixed",
-		},
-		{
-			Name:  "UNDERMOON_BACKEND_FLUSH_SIZE",
-			Value: "1024",
-		},
-		{
-			Name:  "UNDERMOON_BACKEND_LOW_FLUSH_INTERVAL",
-			Value: "200000",
-		},
-		{
-			Name:  "UNDERMOON_BACKEND_HIGH_FLUSH_INTERVAL",
-			Value: "600000",
+			Value: "disabled",
 		},
 	}
 
