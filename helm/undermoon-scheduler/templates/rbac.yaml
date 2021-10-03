@@ -1,0 +1,87 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: undermoon-scheduler-cr
+rules:
+- apiGroups: ["", "events.k8s.io"]
+  resources: ["events"]
+  verbs: ["create", "patch", "update"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["create"]
+- apiGroups: ["coordination.k8s.io"]
+  resourceNames: ["kube-scheduler"]
+  resources: ["leases"]
+  verbs: ["get", "update"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resourceNames: ["kube-scheduler"]
+  resources: ["endpoints"]
+  verbs: ["get", "update"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["delete", "get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["bindings", "pods/binding"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["pods/status"]
+  verbs: ["patch", "update"]
+- apiGroups: [""]
+  resources: ["replicationcontrollers", "services"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps", "extensions"]
+  resources: ["replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims", "persistentvolumes"]
+  verbs: ["get", "list", "watch", "patch", "update"]
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["tokenreviews"]
+  verbs: ["create"]
+- apiGroups: ["authorization.k8s.io"]
+  resources: ["subjectaccessreviews"]
+  verbs: ["create"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["csinodes", "storageclasses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["scheduling.sigs.k8s.io"]
+  resources: ["podgroups", "elasticquotas"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["csidrivers", "csistoragecapacities"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: undermoon-scheduler-sa
+  namespace: {{ .Release.Namespace }}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: undermoon-scheduler-crb
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: undermoon-scheduler-cr
+subjects:
+  - kind: ServiceAccount
+    name: undermoon-scheduler-sa
+    namespace: {{ .Release.Namespace }}

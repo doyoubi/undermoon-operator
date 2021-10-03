@@ -1,0 +1,6 @@
+image:
+  schedulerImage: doyoubi/undermoon-scheduler
+  schedulerImageTag: v0.3.1
+  schedulerImagePullPolicy: IfNotPresent
+
+replicas: 1
