@@ -11,14 +11,14 @@ make build-helm
 ```
 
 Then you can see the following packages in the current directory:
-- undermoon-operator-0.3.0.tgz
-- undermoon-cluster-0.3.0.tgz
+- undermoon-operator-0.3.1.tgz
+- undermoon-cluster-0.3.1.tgz
 
 ### Run the Operator
 Run the `undermoon-operator`:
 Note that you can change the name `my-undermoon-operator`.
 ```
-helm install my-undermoon-operator undermoon-operator-0.3.0.tgz
+helm install my-undermoon-operator undermoon-operator-0.3.1.tgz
 ```
 
 ### Create an Undermoon Cluster
@@ -31,7 +31,7 @@ helm install \
     --set 'cluster.port=5299' \
     my-cluster \
     -n my-namespace \
-    undermoon-cluster-0.3.0.tgz
+    undermoon-cluster-0.3.1.tgz
 ```
 
 Fields here:
