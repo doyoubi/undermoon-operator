@@ -15,10 +15,10 @@ cluster:
 
 image:
   undermoonImage: doyoubi/undermoon
-  undermoonImageTag: 0.6.0-buster
+  undermoonImageTag: 0.6.1-buster
   undermoonImagePullPolicy: IfNotPresent
   redisImage: redis
-  redisImageTag: 5.0.9
+  redisImageTag: 5.0.14
 
 resources:
   brokerResources:

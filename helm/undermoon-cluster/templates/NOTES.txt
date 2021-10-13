@@ -1,9 +1,6 @@
-1. Get the redis cluster address:
-```
-kubectl get svc "{{ include "undermoon-cluster.public_storage_service_name" . }}" --namespace "{{ .Release.Namespace }}"
-```
+1. Redis cluster address:
 
-The port is {{ .Values.cluster.port }}.
+{{ include "undermoon-cluster.public_storage_service_name" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.cluster.port }}
 
 2. Scaling the cluster
 Edit the undermoon resource:
