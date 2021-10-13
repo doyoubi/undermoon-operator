@@ -7,7 +7,7 @@ using [operator-sdk](https://sdk.operatorframework.io/).
 
 ### Build Helm Charts
 ```
-> make build-helm
+make build-helm
 ```
 
 Then you can see the following packages in the current directory:
@@ -18,13 +18,13 @@ Then you can see the following packages in the current directory:
 Run the `undermoon-operator`:
 Note that you can change the name `my-undermoon-operator`.
 ```
-> helm install my-undermoon-operator undermoon-operator-0.3.0.tgz
+helm install my-undermoon-operator undermoon-operator-0.3.0.tgz
 ```
 
 ### Create an Undermoon Cluster
 Create an undermoon cluster by installing helm charts package:
 ```
-> helm install \
+helm install \
     --set 'cluster.clusterName=my-cluster-name' \
     --set 'cluster.chunkNumber=1' \
     --set 'cluster.maxMemory=2048' \
@@ -48,12 +48,12 @@ Fields here:
 Then you can access the service through `my-cluster:5299` inside the Kubernetes cluster:
 ```
 # This can only be run inside the Kubernetes cluster.
-> redis-cli -h my-cluster -p 5299 -c get mykey
+redis-cli -h my-cluster.my-namespace.svc.cluster.local -p 5299 -c get mykey
 ```
 
 ### Scale the Cluster
 ```
-> kubectl edit undermoon/my-cluster
+kubectl edit undermoon/my-cluster
 # Change the `chunkNumber`, save, and exit.
 ```
 Then the cluster will automatically scale the cluster.
