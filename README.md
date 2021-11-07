@@ -13,6 +13,7 @@ make build-helm
 Then you can see the following packages in the current directory:
 - undermoon-operator-0.3.1.tgz
 - undermoon-cluster-0.3.1.tgz
+- undermoon-scheduler-0.3.1.tgz
 
 ### Run the Operator
 Run the `undermoon-operator`:
@@ -57,6 +58,31 @@ kubectl edit undermoon/my-cluster
 # Change the `chunkNumber`, save, and exit.
 ```
 Then the cluster will automatically scale the cluster.
+
+### Using undermoon-scheduler
+By default, undermoon does not guarantee master and replica redis instances in the same shard are not in the same node.
+We need to use `undermoon-scheduler` based on [scheduler framework](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/) to achieve that.
+
+This will install `undermoon-scheduler` as a second scheduler.
+You may want to replace the default scheduler instead.
+See the [docs](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/doc/install.md#as-a-second-scheduler) from scheduler-plugins for more details.
+
+```
+helm install example-scheduler -n my-namespace "undermoon-scheduler-0.3.1.tgz"
+```
+
+Then specify the `schedulerName` when installing `undermoon-cluster`:
+```
+helm install \
+    --set 'cluster.clusterName=my-cluster-name' \
+    --set 'cluster.chunkNumber=1' \
+    --set 'cluster.maxMemory=2048' \
+    --set 'cluster.port=5299' \
+    --set "schedulerName=undermoon-scheduler" \
+    my-cluster \
+    -n my-namespace \
+    undermoon-cluster-0.3.1.tgz
+```
 
 ## Docs
 - [Development](./docs/development.md)
