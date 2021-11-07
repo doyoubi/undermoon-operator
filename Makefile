@@ -1,5 +1,6 @@
 # Current Operator version
 VERSION ?= v0.3.1
+SCHEDULER_VERSION ?= v0.1.0
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 # Options for 'bundle-build'
@@ -13,16 +14,21 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 DEBUG_IMG_NAME ?= localhost:5000/undermoon-operator
 DEBUG_UNDERMOON_IMG_NAME ?= localhost:5000/undermoon_test
+DEBUG_SCHEDULER_IMG_NAME ?= localhost:5000/undermoon-scheduler
 
 UM_OP_DEBUG ?= $(shell test -f "debug" && echo 1 || echo 0)
 ifeq ($(UM_OP_DEBUG),1)
 IMG_NAME ?= $(DEBUG_IMG_NAME)
 UNDERMOON_IMG_NAME ?= $(DEBUG_UNDERMOON_IMG_NAME)
 UNDERMOON_IMG_VERSION ?= latest
+SCHEDULER_IMG_NAME ?= $(DEBUG_SCHEDULER_IMG_NAME)
+SCHEDULER_IMG_VERSION ?= latest
 else
 IMG_NAME ?= undermoon-operator
 UNDERMOON_IMG_NAME ?= doyoubi/undermoon
 UNDERMOON_IMG_VERSION ?= 0.6.1-buster
+SCHEDULER_IMG_NAME ?= doyoubi/undermoon-scheduler
+SCHEDULER_IMG_VERSION ?= $(SCHEDULER_VERSION)
 endif
 
 # Image URL to use all building/pushing image targets

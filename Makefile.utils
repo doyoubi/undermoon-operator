@@ -21,6 +21,7 @@ build-image:
 build-helm:
 	helm package helm/undermoon-operator
 	helm package helm/undermoon-cluster
+	helm package helm/undermoon-scheduler
 
 install-helm-package:
 	$(MAKE) build-helm
@@ -47,6 +48,15 @@ upgrade-helm-package:
 uninstall-helm-package:
 	helm uninstall example-undermoon || true
 	helm uninstall example-operator || true
+	helm uninstall example-scheduler || true
+
+install-undermoon-scheduler:
+	$(MAKE) build-helm
+	helm install \
+		--set "image.schedulerImage=$(SCHEDULER_IMG_NAME)" \
+		--set "image.schedulerImageTag=$(SCHEDULER_IMG_VERSION)" \
+		--set "image.schedulerImagePullPolicy=Always" \
+		example-scheduler "undermoon-scheduler-$(OPERATOR_HELM_VERSION).tgz"
 
 lint:
 	$(MAKE) fmt
@@ -110,6 +120,9 @@ debug-build:
 debug-install:
 	$(MAKE) install-helm-package UM_OP_DEBUG=1
 
+debug-install-scheduler:
+	$(MAKE) install-undermoon-scheduler UM_OP_DEBUG=1
+
 debug-upgrade:
 	$(MAKE) upgrade-helm-package UM_OP_DEBUG=1
 
@@ -148,6 +161,11 @@ run-redis-cli:
 
 # cleanup-e2e-test:
 # 	kubectl delete namespace e2etest || true
+
+docker-build-scheduler-image:
+	docker image build -f scheduler/Dockerfile -t undermoon-scheduler .
+	docker tag undermoon-scheduler localhost:5000/undermoon-scheduler
+	docker push localhost:5000/undermoon-scheduler
 
 docker-build-checker-image:
 	docker image build -f chaostest/Dockerfile -t undermoon_checker .

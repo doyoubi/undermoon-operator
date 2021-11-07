@@ -106,6 +106,17 @@ Cleanup the environment after debugging:
 > make debug-stop
 ```
 
+### Customized Scheduler
+We can install our customized scheduler `undermoon-scheduler` by:
+```
+make debug-install-scheduler
+```
+
+Then need to add a line to specify `schedulerName` when installing `undermoon-cluster`:
+```
+--set "schedulerName=undermoon-scheduler" \
+```
+
 ### Tools
 Run an image with `curl` and `jq` to debug the broker:
 ```

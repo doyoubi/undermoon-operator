@@ -28,6 +28,7 @@ testbin/*
 debug
 undermoon-cluster-*.tgz
 undermoon-operator-*.tgz
+undermoon-scheduler-*.tgz
 undermoon-checker-*.tgz
 chaostest/__pycache__
 

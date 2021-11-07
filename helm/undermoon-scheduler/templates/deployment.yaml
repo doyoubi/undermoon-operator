@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    component: undermoon-scheduler
+  name: undermoon-scheduler
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      component: undermoon-scheduler
+  replicas: {{ .Values.replicas }}
+  template:
+    metadata:
+      labels:
+        component: undermoon-scheduler
+    spec:
+      serviceAccountName: undermoon-scheduler-sa
+      containers:
+        - command:
+            - /bin/undermoon-scheduler
+            - --address=0.0.0.0
+            - --leader-elect=false
+            - --config=/etc/kubernetes/undermoon-scheduler-config.yaml
+            - --scheduler-name=undermoon-scheduler
+            - -v=0
+          name: undermoon-scheduler
+          image: '{{ .Values.image.schedulerImage }}:{{ .Values.image.schedulerImageTag }}'
+          imagePullPolicy: '{{ .Values.image.schedulerImagePullPolicy }}'
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10251
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10251
+          resources:
+            requests:
+              cpu: '0.1'
+          securityContext:
+            privileged: false
+          volumeMounts:
+            - name: undermoon-scheduler-config
+              mountPath: /etc/kubernetes
+              readOnly: true
+      hostNetwork: false
+      hostPID: false
+      volumes:
+        - name: undermoon-scheduler-config
+          configMap:
+            name: undermoon-scheduler-config
