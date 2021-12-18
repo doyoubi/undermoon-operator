@@ -111,7 +111,7 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 		},
 		{
 			Name:  "UNDERMOON_MIGRATION_LIMIT",
-			Value: "2",
+			Value: fmt.Sprintf("%d", cr.Spec.MigrationLimit),
 		},
 		{
 			Name:  "UNDERMOON_RECOVER_FROM_META_FILE",
@@ -241,6 +241,10 @@ func brokerStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Under
 		)
 		return true
 	}
+
+	// Since changing migration_limit for broker may result in
+	// inconsistent generated metadata for the same epoch in different brokers,
+	// we won't update migration_limit.
 
 	return false
 }
