@@ -11,15 +11,15 @@ make build-helm
 ```
 
 Then you can see the following packages in the current directory:
-- undermoon-operator-0.3.1.tgz
-- undermoon-cluster-0.3.1.tgz
-- undermoon-scheduler-0.3.1.tgz
+- undermoon-operator-0.4.0.tgz
+- undermoon-cluster-0.4.0.tgz
+- undermoon-scheduler-0.4.0.tgz
 
 ### Run the Operator
 Run the `undermoon-operator`:
 Note that you can change the name `my-undermoon-operator`.
 ```
-helm install my-undermoon-operator undermoon-operator-0.3.1.tgz
+helm install my-undermoon-operator undermoon-operator-0.4.0.tgz
 ```
 
 ### Create an Undermoon Cluster
@@ -32,7 +32,7 @@ helm install \
     --set 'cluster.port=5299' \
     my-cluster \
     -n my-namespace \
-    undermoon-cluster-0.3.1.tgz
+    undermoon-cluster-0.4.0.tgz
 ```
 
 Fields here:
@@ -68,7 +68,7 @@ You may want to replace the default scheduler instead.
 See the [docs](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/doc/install.md#as-a-second-scheduler) from scheduler-plugins for more details.
 
 ```
-helm install example-scheduler -n my-namespace "undermoon-scheduler-0.3.1.tgz"
+helm install example-scheduler -n my-namespace "undermoon-scheduler-0.4.0.tgz"
 ```
 
 Then specify the `schedulerName` when installing `undermoon-cluster`:
@@ -81,7 +81,7 @@ helm install \
     --set "schedulerName=undermoon-scheduler" \
     my-cluster \
     -n my-namespace \
-    undermoon-cluster-0.3.1.tgz
+    undermoon-cluster-0.4.0.tgz
 ```
 
 ## Docs
