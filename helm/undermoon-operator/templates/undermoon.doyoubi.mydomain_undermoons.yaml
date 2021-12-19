@@ -444,6 +444,11 @@ spec:
                 format: int32
                 minimum: 1
                 type: integer
+              migrationLimit:
+                description: Maximum concurrent migration shard number. This can't be updated.
+                format: int32
+                minimum: 1
+                type: integer
               migrationScanCount:
                 description: COUNT arguments for SCAN command during migration.
                 format: int32
@@ -1548,6 +1553,7 @@ spec:
             - clusterName
             - disableFailover
             - maxMemory
+            - migrationLimit
             - migrationScanCount
             - migrationScanInterval
             - port

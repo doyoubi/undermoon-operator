@@ -11,6 +11,7 @@ spec:
   proxyThreads: 2
   migrationScanInterval: 1000
   migrationScanCount: 16
+  migrationLimit: 2
   disableFailover: false
   undermoonImage: localhost:5000/undermoon_test
   undermoonImagePullPolicy: IfNotPresent

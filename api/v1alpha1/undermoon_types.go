@@ -51,6 +51,10 @@ type UndermoonSpec struct {
 	// COUNT arguments for SCAN command during migration.
 	// +kubebuilder:validation:Minimum=1
 	MigrationScanCount uint32 `json:"migrationScanCount"`
+	// Maximum concurrent migration shard number.
+	// This can't be updated.
+	// +kubebuilder:validation:Minimum=1
+	MigrationLimit uint32 `json:"migrationLimit"`
 	// Disable failover for server proxies.
 	DisableFailover bool `json:"disableFailover"`
 

@@ -13,6 +13,7 @@ spec:
   disableFailover: {{ .Values.cluster.disableFailover }}
   imagePullSecrets: {{- toYaml .Values.imagePullSecrets | nindent 4 }}
   maxMemory: {{ .Values.cluster.maxMemory }}
+  migrationLimit: {{ .Values.cluster.migrationLimit }}
   migrationScanCount: {{ .Values.cluster.migrationScanCount }}
   migrationScanInterval: {{ .Values.cluster.migrationScanInterval }}
   nodeSelector: {{- toYaml .Values.nodeSelector | nindent 4 }}
