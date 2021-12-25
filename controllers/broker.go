@@ -250,6 +250,10 @@ func brokerStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Under
 	// inconsistent generated metadata for the same epoch in different brokers,
 	// we won't update migration_limit.
 
+	if envVarListNeedUpdate(container.Env, cr.Spec.BrokerEnvVar) {
+		return true
+	}
+
 	return false
 }
 

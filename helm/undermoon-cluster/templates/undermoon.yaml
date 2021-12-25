@@ -6,11 +6,11 @@ metadata:
 spec:
   activeRedirection: {{ .Values.cluster.activeRedirection }}
   affinity: {{- toYaml .Values.affinity | nindent 4 }}
-  brokerEnvVar: {{ .Values.envVar.broker }}
+  brokerEnvVar: {{- toYaml .Values.envVar.broker | nindent 4 }}
   brokerResources: {{- toYaml .Values.resources.brokerResources | nindent 4 }}
   chunkNumber: {{ .Values.cluster.chunkNumber }}
   clusterName: {{ .Values.cluster.clusterName }}
-  coordinatorEnvVar: {{ .Values.envVar.coordinator }}
+  coordinatorEnvVar: {{- toYaml .Values.envVar.coordinator | nindent 4 }}
   coordinatorResources: {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
   disableFailover: {{ .Values.cluster.disableFailover }}
   imagePullSecrets: {{- toYaml .Values.imagePullSecrets | nindent 4 }}
@@ -20,10 +20,10 @@ spec:
   migrationScanInterval: {{ .Values.cluster.migrationScanInterval }}
   nodeSelector: {{- toYaml .Values.nodeSelector | nindent 4 }}
   port: {{ .Values.cluster.port }}
-  proxyEnvVar: {{ .Values.envVar.proxy }}
+  proxyEnvVar: {{- toYaml .Values.envVar.proxy | nindent 4 }}
   proxyResources: {{- toYaml .Values.resources.proxyResources | nindent 4 }}
   proxyThreads: {{ .Values.cluster.proxyThreads }}
-  redisEnvVar: {{ .Values.envVar.redis }}
+  redisEnvVar: {{- toYaml .Values.envVar.redis | nindent 4 }}
   redisImage: {{ .Values.image.redisImage }}:{{ .Values.image.redisImageTag }}
   redisResources: {{- toYaml .Values.resources.redisResources | nindent 4 }}
   redisVolumeDevices: {{- toYaml .Values.redisVolumeDevices | nindent 4 }}

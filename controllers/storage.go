@@ -538,6 +538,16 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 		return true
 	}
 
+	if envVarListNeedUpdate(serverProxyContainer.Env, cr.Spec.ProxyEnvVar) {
+		return true
+	}
+	if envVarListNeedUpdate(redis1Container.Env, cr.Spec.RedisEnvVar) {
+		return true
+	}
+	if envVarListNeedUpdate(redis2Container.Env, cr.Spec.RedisEnvVar) {
+		return true
+	}
+
 	return false
 }
 

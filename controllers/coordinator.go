@@ -174,6 +174,10 @@ func coordinatorStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.
 		return true
 	}
 
+	if envVarListNeedUpdate(container.Env, cr.Spec.CoordinatorEnvVar) {
+		return true
+	}
+
 	return false
 }
 

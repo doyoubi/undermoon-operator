@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"io/ioutil"
+	"reflect"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -270,4 +271,22 @@ func decompressString(data string) (string, error) {
 	}
 
 	return string(origin), nil
+}
+
+func envVarListNeedUpdate(old []corev1.EnvVar, new []corev1.EnvVar) bool {
+	oldMap := make(map[string]corev1.EnvVar)
+	for _, envVar := range old {
+		oldMap[envVar.Name] = envVar
+	}
+
+	for _, newEnvVar := range new {
+		oldEnvVar, exists := oldMap[newEnvVar.Name]
+		// (1) new env var does not exist
+		// (2) different env var value
+		if !exists || !reflect.DeepEqual(oldEnvVar, newEnvVar) {
+			return true
+		}
+	}
+
+	return false
 }

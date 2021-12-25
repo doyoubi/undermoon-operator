@@ -43,16 +43,16 @@
   value: "{{ .Values.image.redisImage }}:{{ .Values.image.redisImageTag }}"
 - op: replace
   path: /spec/brokerEnvVar
-  value: "{{ .Values.envVar.broker }}"
+  value: "{{- toYaml .Values.envVar.broker | nindent 4 }}"
 - op: replace
   path: /spec/coordinatorEnvVar
-  value: "{{ .Values.envVar.coordinator }}"
+  value: "{{- toYaml .Values.envVar.coordinator | nindent 4 }}"
 - op: replace
   path: /spec/proxyEnvVar
-  value: "{{ .Values.envVar.proxy }}"
+  value: "{{- toYaml .Values.envVar.proxy | nindent 4 }}"
 - op: replace
   path: /spec/redisEnvVar
-  value: "{{ .Values.envVar.redis }}"
+  value: "{{- toYaml .Values.envVar.redis | nindent 4 }}"
 - op: replace
   path: /spec/brokerResources
   value: "{{- toYaml .Values.resources.brokerResources | nindent 4 }}"
