@@ -21,6 +21,12 @@ image:
   redisImage: redis
   redisImageTag: 5.0.14
 
+envVar:
+  broker: []
+  coordinator: []
+  proxy: []
+  redis: []
+
 resources:
   brokerResources:
     limits:

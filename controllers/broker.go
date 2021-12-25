@@ -173,6 +173,10 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 			Value: "5",
 		},
 	}
+	if cr.Spec.BrokerEnvVar != nil {
+		env = append(env, cr.Spec.BrokerEnvVar...)
+	}
+
 	container := corev1.Container{
 		Name:            brokerContainerName,
 		Image:           cr.Spec.UndermoonImage,

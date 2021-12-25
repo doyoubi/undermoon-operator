@@ -65,6 +65,15 @@ type UndermoonSpec struct {
 	RedisImage string `json:"redisImage"`
 
 	// +optional
+	BrokerEnvVar []corev1.EnvVar `json:"brokerEnvVar"`
+	// +optional
+	CoordinatorEnvVar []corev1.EnvVar `json:"coordinatorEnvVar"`
+	// +optional
+	ProxyEnvVar []corev1.EnvVar `json:"proxyEnvVar"`
+	// +optional
+	RedisEnvVar []corev1.EnvVar `json:"redisEnvVar"`
+
+	// +optional
 	BrokerResources corev1.ResourceRequirements `json:"brokerResources"`
 	// +optional
 	CoordinatorResources corev1.ResourceRequirements `json:"coordinatorResources"`

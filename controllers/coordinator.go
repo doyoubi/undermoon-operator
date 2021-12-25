@@ -101,6 +101,10 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 			Value: disableFailover,
 		},
 	}
+	if cr.Spec.CoordinatorEnvVar != nil {
+		env = append(env, cr.Spec.CoordinatorEnvVar...)
+	}
+
 	container := corev1.Container{
 		Name:            coordinatorContainerName,
 		Image:           cr.Spec.UndermoonImage,
