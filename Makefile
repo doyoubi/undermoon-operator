@@ -1,5 +1,5 @@
 # Current Operator version
-VERSION ?= v0.4.0
+VERSION ?= v0.4.1
 SCHEDULER_VERSION ?= v0.1.0
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
