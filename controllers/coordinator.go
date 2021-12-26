@@ -11,7 +11,7 @@ import (
 )
 
 const coordinatorPort = 6699
-const coordinatorNum int32 = 3
+const coordinatorNum int32 = 2
 const coordinatorContainerName = "coordinator"
 const undermoonServiceTypeCoordinator = "coordinator"
 const coordinatorTopologyKey = "undermoon-broker-topology-key"

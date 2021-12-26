@@ -11,7 +11,7 @@ import (
 )
 
 const brokerPort = 7799
-const brokerNum int32 = 3
+const brokerNum int32 = 2
 const brokerContainerName = "broker"
 const undermoonServiceTypeBroker = "broker"
 const brokerTopologyKey = "undermoon-broker-topology-key"
