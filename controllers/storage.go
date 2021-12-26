@@ -193,6 +193,10 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		},
 	}
 
+	if cr.Spec.ProxyEnvVar != nil {
+		env = append(env, cr.Spec.ProxyEnvVar...)
+	}
+
 	fqdn := genStorageFQDNFromName(podNameStr, cr)
 	serverProxyAddress := fmt.Sprintf("%s:%d", fqdn, cr.Spec.Port)
 	serverProxyAddressEnv := fmt.Sprintf("%s:%d", genStorageFQDNFromName(podNameEnvStr, cr), cr.Spec.Port)
@@ -300,6 +304,18 @@ exit 0;
 
 func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, cr *undermoonv1alpha1.Undermoon) corev1.Container {
 	portStr := fmt.Sprintf("%d", port)
+
+	env := []corev1.EnvVar{
+		podIPEnv(),
+		{
+			Name:  redisMaxmemoryPodEnvName,
+			Value: fmt.Sprintf("%d", maxMemory),
+		},
+	}
+	if cr.Spec.RedisEnvVar != nil {
+		env = append(env, cr.Spec.RedisEnvVar...)
+	}
+
 	return corev1.Container{
 		Name:            fmt.Sprintf("%s-%d", redisContainerName, index),
 		Image:           redisImage,
@@ -323,13 +339,7 @@ func genRedisContainer(index uint32, redisImage string, maxMemory, port uint32, 
 			"localhost",
 			"0", // Use zero port here.
 		},
-		Env: []corev1.EnvVar{
-			podIPEnv(),
-			{
-				Name:  redisMaxmemoryPodEnvName,
-				Value: fmt.Sprintf("%d", maxMemory),
-			},
-		},
+		Env:            env,
 		Resources:      cr.Spec.RedisResources,
 		Lifecycle:      genPreStopHookLifeCycle([]string{"sleep", "30"}),
 		ReadinessProbe: genRedisReadinessProbe(port, redisReplicationOffsetThreshold),
@@ -525,6 +535,16 @@ func storageStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Unde
 			"OldThreadNumber", threadNumber,
 			"NewThreadNumber", cr.Spec.ProxyThreads,
 		)
+		return true
+	}
+
+	if envVarListNeedUpdate(serverProxyContainer.Env, cr.Spec.ProxyEnvVar) {
+		return true
+	}
+	if envVarListNeedUpdate(redis1Container.Env, cr.Spec.RedisEnvVar) {
+		return true
+	}
+	if envVarListNeedUpdate(redis2Container.Env, cr.Spec.RedisEnvVar) {
 		return true
 	}
 

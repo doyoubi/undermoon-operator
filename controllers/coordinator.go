@@ -101,6 +101,10 @@ func createCoordinatorStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.State
 			Value: disableFailover,
 		},
 	}
+	if cr.Spec.CoordinatorEnvVar != nil {
+		env = append(env, cr.Spec.CoordinatorEnvVar...)
+	}
+
 	container := corev1.Container{
 		Name:            coordinatorContainerName,
 		Image:           cr.Spec.UndermoonImage,
@@ -167,6 +171,10 @@ func coordinatorStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.
 		reqLogger.Info("Coordinator resource is changed.",
 			"OldResource", container.Resources, "NewResource", cr.Spec.CoordinatorResources,
 		)
+		return true
+	}
+
+	if envVarListNeedUpdate(container.Env, cr.Spec.CoordinatorEnvVar) {
 		return true
 	}
 

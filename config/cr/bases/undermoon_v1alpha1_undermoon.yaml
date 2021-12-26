@@ -16,6 +16,10 @@ spec:
   undermoonImage: localhost:5000/undermoon_test
   undermoonImagePullPolicy: IfNotPresent
   redisImage: redis:5.0.9
+  brokerEnvVar: []
+  coordinatorEnvVar: []
+  proxyEnvVar: []
+  redisEnvVar: []
   brokerResources: {}
   coordinatorResources: {}
   proxyResources: {}

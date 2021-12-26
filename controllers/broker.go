@@ -173,6 +173,10 @@ func createBrokerStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulSe
 			Value: "5",
 		},
 	}
+	if cr.Spec.BrokerEnvVar != nil {
+		env = append(env, cr.Spec.BrokerEnvVar...)
+	}
+
 	container := corev1.Container{
 		Name:            brokerContainerName,
 		Image:           cr.Spec.UndermoonImage,
@@ -245,6 +249,10 @@ func brokerStatefulSetChanged(reqLogger logr.Logger, cr *undermoonv1alpha1.Under
 	// Since changing migration_limit for broker may result in
 	// inconsistent generated metadata for the same epoch in different brokers,
 	// we won't update migration_limit.
+
+	if envVarListNeedUpdate(container.Env, cr.Spec.BrokerEnvVar) {
+		return true
+	}
 
 	return false
 }
