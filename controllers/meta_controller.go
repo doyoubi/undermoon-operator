@@ -230,6 +230,12 @@ func (con *metaController) changeNodeNumber(reqLogger logr.Logger, masterBrokerA
 		if err == errRetryReconciliation {
 			return err
 		}
+		if err == errProxyResourceOutOfOrder {
+			reqLogger.Info(`proxies in broker are out of order. Trying to recover once all storage pods are ready.
+				This can happen a lot if changing chunk number frequently.
+				If it's not able to recover, storage Statefulsets may have some pods not able to be scheduled`)
+			return errRetryReconciliation
+		}
 		reqLogger.Error(err, "failed to scale nodes")
 		return err
 	}

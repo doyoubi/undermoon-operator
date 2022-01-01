@@ -9,19 +9,21 @@ import (
 )
 
 const (
-	errStrAlreadyExists       = "ALREADY_EXISTED"
-	errStrMigrationRunning    = "MIGRATION_RUNNING"
-	errStrNoAvailableResource = "NO_AVAILABLE_RESOURCE"
-	errStrFreeNodeFound       = "FREE_NODE_FOUND"
-	errStrFreeNodeNotFound    = "FREE_NODE_NOT_FOUND"
-	errStrRetry               = "RETRY"
-	errStrExternalTimeout     = "EXTERNAL_TIMEOUT"
+	errStrAlreadyExists           = "ALREADY_EXISTED"
+	errStrMigrationRunning        = "MIGRATION_RUNNING"
+	errStrNoAvailableResource     = "NO_AVAILABLE_RESOURCE"
+	errStrFreeNodeFound           = "FREE_NODE_FOUND"
+	errStrFreeNodeNotFound        = "FREE_NODE_NOT_FOUND"
+	errStrRetry                   = "RETRY"
+	errStrExternalTimeout         = "EXTERNAL_TIMEOUT"
+	errStrProxyResourceOutOfOrder = "PROXY_RESOURCE_OUT_OF_ORDER"
 )
 
 var (
-	errMigrationRunning = errors.New("MIGRATION_RUNNING")
-	errFreeNodeFound    = errors.New("FREE_NODE_FOUND")
-	errExternalTimeout  = errors.New("EXTERNAL_TIMEOUT")
+	errMigrationRunning        = errors.New(errStrMigrationRunning)
+	errFreeNodeFound           = errors.New(errStrFreeNodeFound)
+	errExternalTimeout         = errors.New(errStrExternalTimeout)
+	errProxyResourceOutOfOrder = errors.New(errStrProxyResourceOutOfOrder)
 )
 
 type errorResponse struct {
@@ -365,6 +367,9 @@ func (client *brokerClient) scaleNodes(address, clusterName string, chunkNumber 
 		}
 		if ok && response.Error == errStrRetry {
 			return errRetryReconciliation
+		}
+		if ok && response.Error == errStrProxyResourceOutOfOrder {
+			return errProxyResourceOutOfOrder
 		}
 	}
 
