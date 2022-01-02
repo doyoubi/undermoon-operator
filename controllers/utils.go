@@ -21,7 +21,7 @@ import (
 )
 
 const chunkNodeNumber int = 4
-const halfChunkNodeNumber int = 2
+const chunkShardNumber int = 2
 
 var errRetryReconciliation = pkgerrors.New("retry reconciliation")
 
