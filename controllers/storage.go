@@ -239,7 +239,7 @@ func createStorageStatefulSet(cr *undermoonv1alpha1.Undermoon) *appsv1.StatefulS
 		},
 	}
 
-	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	replicaNum := int32(int(cr.Spec.ChunkNumber) * chunkShardNumber)
 
 	return &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
@@ -587,7 +587,7 @@ func genStorageAddressFromName(name string, cr *undermoonv1alpha1.Undermoon) str
 
 func genStorageStatefulSetAddrs(cr *undermoonv1alpha1.Undermoon) []string {
 	addrs := []string{}
-	replicaNum := int(cr.Spec.ChunkNumber) * halfChunkNodeNumber
+	replicaNum := int(cr.Spec.ChunkNumber) * chunkShardNumber
 	for _, name := range genStorageNames(cr.ObjectMeta.Name, replicaNum) {
 		addr := genStorageAddressFromName(name, cr)
 		addrs = append(addrs, addr)

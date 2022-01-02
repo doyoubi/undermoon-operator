@@ -151,7 +151,7 @@ func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger,
 		return errRetryReconciliation
 	}
 
-	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	replicaNum := int32(int(cr.Spec.ChunkNumber) * chunkShardNumber)
 	if *storage.Spec.Replicas == replicaNum {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (con *storageController) setScaleState(reqLogger logr.Logger, cr *undermoon
 }
 
 func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet) error {
-	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	replicaNum := int32(int(cr.Spec.ChunkNumber) * chunkShardNumber)
 	storage.Spec.Replicas = &replicaNum
 
 	if len(storage.ObjectMeta.ResourceVersion) == 0 {
@@ -237,11 +237,18 @@ func (con *storageController) getServiceEndpointsNum(storageService *corev1.Serv
 }
 
 func (con *storageController) storageAllReady(storageService *corev1.Service, cr *undermoonv1alpha1.Undermoon) (bool, error) {
+	// We only expose those server proxies initialized by UMCTL SETCLUSTER to redis clients.
+	// That's why we
+	// 1. only set the server proxy pods ready when they have received "UMCTL SETCLUSTER".
+	// 2. don't set PublishNotReadyAddresses for storage public service,
+	// 3. while set PublishNotReadyAddresses for storage service for brokers to access them.
+	// We can still know whether the storage pods are successfully created
+	// by checking whether they have corresponding Endpoints in storage service (not the public one).
 	n, err := con.getServiceEndpointsNum(storageService)
 	if err != nil {
 		return false, err
 	}
-	serverProxyNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	serverProxyNum := int32(int(cr.Spec.ChunkNumber) * chunkShardNumber)
 	ready := n >= int(serverProxyNum)
 	return ready, nil
 }
@@ -255,6 +262,8 @@ func (con *storageController) storageAllReadyAndStable(storageService *corev1.Se
 		return false, nil
 	}
 
+	// Check whether Statefulset is scaling.
+	// Maybe we can just use storageAllReady instead.
 	statefulSetPodNum := *storageStatefulSet.Spec.Replicas
 	if storageStatefulSet.Status.CurrentReplicas != statefulSetPodNum {
 		return false, nil

@@ -176,6 +176,14 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		return reconcile.Result{}, err
 	}
 
+	// We can still cancel scaling up here if chunkNumber is reduced back before migration starts.
+	// This is used to support the following case:
+	// - 1. User scale up the chunkNumber.
+	// - 2. Due to lack of resource, the pods in Statefulset can't be scheduled.
+	// - 3. User scale it back to original chunkNumber or lower chunkNumber.
+	// We can still come down here when some of the Statefulset pods are still pending,
+	// because `storageAllReadyAndStable` and `storageAllReady` only checks the readiness
+	// for the pods within the `chunkNumber` specified in the Undermoon Custom Resource.
 	err = r.storageCon.scaleDownStorageStatefulSet(reqLogger, instance, resource.storageStatefulSet, info)
 	if err != nil {
 		if err == errRetryReconciliation {
