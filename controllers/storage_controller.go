@@ -151,7 +151,7 @@ func (con *storageController) scaleDownStorageStatefulSet(reqLogger logr.Logger,
 		return errRetryReconciliation
 	}
 
-	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	replicaNum := int32(int(cr.Spec.ChunkNumber) * chunkShardNumber)
 	if *storage.Spec.Replicas == replicaNum {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (con *storageController) setScaleState(reqLogger logr.Logger, cr *undermoon
 }
 
 func (con *storageController) updateStorageStatefulSet(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon, storage *appsv1.StatefulSet) error {
-	replicaNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	replicaNum := int32(int(cr.Spec.ChunkNumber) * chunkShardNumber)
 	storage.Spec.Replicas = &replicaNum
 
 	if len(storage.ObjectMeta.ResourceVersion) == 0 {
@@ -241,7 +241,7 @@ func (con *storageController) storageAllReady(storageService *corev1.Service, cr
 	if err != nil {
 		return false, err
 	}
-	serverProxyNum := int32(int(cr.Spec.ChunkNumber) * halfChunkNodeNumber)
+	serverProxyNum := int32(int(cr.Spec.ChunkNumber) * chunkShardNumber)
 	ready := n >= int(serverProxyNum)
 	return ready, nil
 }

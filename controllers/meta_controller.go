@@ -268,6 +268,24 @@ func (con *metaController) getClusterInfo(reqLogger logr.Logger, masterBrokerAdd
 	return info, nil
 }
 
+func (con *metaController) clusterStable(reqLogger logr.Logger, masterBrokerAddress string, cr *undermoonv1alpha1.Undermoon) (bool, error) {
+	info, err := con.client.getClusterInfo(masterBrokerAddress, cr.Spec.ClusterName)
+	if err != nil {
+		reqLogger.Error(err, "failed to get cluster info when checking whether cluster is stable")
+		return false, err
+	}
+
+	if info.IsMigrating {
+		reqLogger.Info("cluster is not stable because cluster is under migration")
+		return false, nil
+	}
+	if info.NodeNumberWithSlots != int(cr.Spec.ChunkNumber)*chunkNodeNumber {
+		reqLogger.Info("cluster is not stable due to node number with slots is not the same as specified in Undermoon CR")
+		return false, nil
+	}
+	return true, nil
+}
+
 func (con *metaController) createMeta(reqLogger logr.Logger, cr *undermoonv1alpha1.Undermoon) error {
 	_, err := createConfigMapGuard(func() (*corev1.ConfigMap, error) {
 		return con.getOrCreateConfigMap(reqLogger, cr)

@@ -110,7 +110,7 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		return reconcile.Result{}, err
 	}
 
-	ready, err := r.brokerAndCoordinatorReady(resource, reqLogger, instance)
+	ready, err := r.brokerAndCoordinatorReady(resource, reqLogger)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -128,6 +128,19 @@ func (r *UndermoonReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 
 	err = r.coordinatorCon.configSetBroker(reqLogger, instance, resource.coordinatorService, masterBrokerAddress)
 	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Cancel scaling up if chunkNumber is reduced back
+	// This is used to support the following case:
+	// - 1. User scale up the chunkNumber.
+	// - 2. Due to lack of resource, the pods in Statefulset can't be scheduled.
+	// = 3. User scale it back to original chunkNumber or lower chunkNumber.
+	err = r.cancelRevertedScalingUp(reqLogger, masterBrokerAddress, instance, resource)
+	if err != nil {
+		if err == errRetryReconciliation {
+			return reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}, nil
+		}
 		return reconcile.Result{}, err
 	}
 
@@ -239,7 +252,7 @@ func (r *UndermoonReconciler) createResources(reqLogger logr.Logger, instance *u
 	}, nil
 }
 
-func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, reqLogger logr.Logger, instance *undermoonv1alpha1.Undermoon) (bool, error) {
+func (r *UndermoonReconciler) brokerAndCoordinatorReady(resource *umResource, reqLogger logr.Logger) (bool, error) {
 	ready, err := r.brokerCon.brokerReady(resource.brokerStatefulSet, resource.brokerService)
 	if err != nil {
 		reqLogger.Error(err, "failed to check broker ready")
@@ -317,6 +330,43 @@ func (r *UndermoonReconciler) triggerRollingUpdate(resource *umResource, reqLogg
 	}
 
 	return nil
+}
+
+func (r *UndermoonReconciler) cancelRevertedScalingUp(reqLogger logr.Logger, masterBrokerAddress string, instance *undermoonv1alpha1.Undermoon, resource *umResource) error {
+	expectedReplicas := int(instance.Spec.ChunkNumber) * chunkShardNumber
+	storageReplicas := int(*resource.storageStatefulSet.Spec.Replicas)
+	if expectedReplicas >= storageReplicas {
+		return nil
+	}
+	// expectedReplicas < storageReplicas
+
+	storageAllReady, err := r.storageCon.storageAllReady(resource.storageService, instance)
+	if err != nil {
+		return err
+	}
+
+	if !storageAllReady {
+		return errRetryReconciliation
+	}
+
+	stable, err := r.metaCon.clusterStable(reqLogger, masterBrokerAddress, instance)
+	if err != nil {
+		return err
+	}
+
+	// We can't cancel it if the migration is started.
+	if !stable {
+		return errRetryReconciliation
+	}
+
+	// Reduce Statefulset replicas directly
+	err = r.storageCon.updateStorageStatefulSet(reqLogger, instance, resource.storageStatefulSet)
+	if err != nil {
+		return err
+	}
+
+	// We have changed the statefulset. All the information retrieved is invalid. Need to rerun the reconciliation.
+	return errRetryReconciliation
 }
 
 // SetupWithManager setups the controller
