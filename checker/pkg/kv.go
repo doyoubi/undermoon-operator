@@ -335,7 +335,7 @@ func (ck *kvChecker) checkLuaMGet(ctx context.Context) error {
 }
 
 // RunKvCheckerService runs the kvChecker
-func RunKvCheckerService(ctx context.Context, startupNode string, ops int64, monitorAddresses []string, monitorBufSize int) {
+func RunKvCheckerService(ctx context.Context, startupNode string, ops int64, monitorAddresses []string, monitorBufSize int, blockOnError bool) {
 	const checkerNum = 3
 
 	st := newSlotTags()
@@ -376,6 +376,9 @@ func RunKvCheckerService(ctx context.Context, startupNode string, ops int64, mon
 		time.Sleep(5 * time.Second)
 	}
 
+	if !blockOnError {
+		return
+	}
 	log.Info().Msg("checker stopped but it will keep running so that we can see the logs")
 	for {
 		time.Sleep(time.Hour)
