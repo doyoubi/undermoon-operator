@@ -15,6 +15,7 @@ type options struct {
 	MonitorAddresses []string `short:"m" long:"monitor-address" description:"Redis addresses for MONITOR command"`
 	OPS              int64    `long:"ops" description:"Commands sent per seconds"`
 	MonitorBuf       int      `long:"monitor-buf" description:"MONITOR command buffer size, 0 to disable"`
+	BlockOnError     bool     `long:"block-on-error" description:"Do not exit the process on error. It's mainly for running in container.'"`
 }
 
 func main() {
@@ -25,5 +26,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	pkg.RunKvCheckerService(context.Background(), opts.Address, opts.OPS, opts.MonitorAddresses, opts.MonitorBuf)
+	pkg.RunKvCheckerService(context.Background(), opts.Address, opts.OPS, opts.MonitorAddresses, opts.MonitorBuf, opts.BlockOnError)
 }

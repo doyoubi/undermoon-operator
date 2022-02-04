@@ -23,6 +23,7 @@ spec:
           - "{{ .Values.undermoonServiceAddress }}"
           - --ops
           - "{{ .Values.ops }}"
+          - --block-on-error
           {{- else }}
           - python
           - {{ include "undermoon-checker.test_script" . }}
