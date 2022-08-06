@@ -2,14 +2,14 @@ apiVersion: undermoon.doyoubi.mydomain/v1alpha1
 kind: Undermoon
 metadata:
   name: {{ include "undermoon-cluster.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ quote .Release.Namespace }}
 spec:
   activeRedirection: {{ .Values.cluster.activeRedirection }}
   affinity: {{- toYaml .Values.affinity | nindent 4 }}
   brokerEnvVar: {{- toYaml .Values.envVar.broker | nindent 4 }}
   brokerResources: {{- toYaml .Values.resources.brokerResources | nindent 4 }}
   chunkNumber: {{ .Values.cluster.chunkNumber }}
-  clusterName: {{ .Values.cluster.clusterName }}
+  clusterName: {{ quote .Values.cluster.clusterName }}
   coordinatorEnvVar: {{- toYaml .Values.envVar.coordinator | nindent 4 }}
   coordinatorResources: {{- toYaml .Values.resources.coordinatorResources | nindent 4 }}
   disableFailover: {{ .Values.cluster.disableFailover }}
@@ -32,5 +32,5 @@ spec:
   storageVolumes: {{- toYaml .Values.storageVolumes | nindent 4 }}
   tolerations: {{- toYaml .Values.tolerations | nindent 4 }}
   undermoonImage: {{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}
-  undermoonImagePullPolicy: {{ .Values.image.undermoonImagePullPolicy }}
+  undermoonImagePullPolicy: {{ quote .Values.image.undermoonImagePullPolicy }}
   volumeClaimTemplates: {{- toYaml .Values.volumeClaimTemplates | nindent 4 }}

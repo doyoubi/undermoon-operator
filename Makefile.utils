@@ -1,5 +1,5 @@
 OPERATOR_VERSION=$(VERSION)
-OPERATOR_HELM_VERSION=0.4.1
+OPERATOR_HELM_VERSION=0.4.2-dev0
 CHECKER_HELM_VERSION=0.1.0
 
 TEST_K8S_VER="v1.18.2"
@@ -95,10 +95,10 @@ update-types: kustomize
 	$(MAKE) generate
 	$(MAKE) manifests
 	# Update crd file in Helm Charts
-	$(KUSTOMIZE) build config/rbac/overlays/helm > $(HELM_CHART_RBAC_FILE)
-	$(KUSTOMIZE) build config/manager/overlays/helm > $(HELM_CHART_OPERATOR_FILE)
-	$(KUSTOMIZE) build config/crd > $(HELM_CHART_CRD_FILE)
 	# Remove the "'" to support non-string type.
+	$(KUSTOMIZE) build config/rbac/overlays/helm | sed "s/\'{{/{{/g" | sed "s/}}\'/}}/g" > $(HELM_CHART_RBAC_FILE)
+	$(KUSTOMIZE) build config/manager/overlays/helm | sed "s/\'{{/{{/g" | sed "s/}}\'/}}/g" > $(HELM_CHART_OPERATOR_FILE)
+	$(KUSTOMIZE) build config/crd | sed "s/\'{{/{{/g" | sed "s/}}\'/}}/g" > $(HELM_CHART_CRD_FILE)
 	$(KUSTOMIZE) build config/cr/overlays/helm | sed "s/\'{{/{{/g" | sed "s/}}\'/}}/g" > $(HELM_CHART_UNDERMOON_FILE)
 
 kind-env-start:

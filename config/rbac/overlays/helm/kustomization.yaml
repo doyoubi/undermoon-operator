@@ -6,4 +6,4 @@ resources:
 
 namePrefix: undermoon-operator-
 
-namespace: "{{ .Release.Namespace }}"
+namespace: "{{ quote .Release.Namespace }}"

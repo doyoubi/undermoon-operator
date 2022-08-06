@@ -9,7 +9,7 @@ images:
   newName: "{{ .Values.image.operatorImage }}"
   newTag: "{{ .Values.image.operatorImageTag }}"
 
-namespace: "{{ .Release.Namespace }}"
+namespace: "{{ quote .Release.Namespace }}"
 
 patchesJson6902:
 - target:
