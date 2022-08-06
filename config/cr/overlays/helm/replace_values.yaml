@@ -4,7 +4,7 @@
   value: '{{ include "undermoon-cluster.fullname" . }}'
 - op: replace
   path: /spec/clusterName
-  value: "{{ .Values.cluster.clusterName }}"
+  value: "{{ quote .Values.cluster.clusterName }}"
 - op: replace
   path: /spec/chunkNumber
   value: "{{ .Values.cluster.chunkNumber }}"
@@ -37,7 +37,7 @@
   value: "{{ .Values.image.undermoonImage }}:{{ .Values.image.undermoonImageTag }}"
 - op: replace
   path: /spec/undermoonImagePullPolicy
-  value: "{{ .Values.image.undermoonImagePullPolicy }}"
+  value: "{{ quote .Values.image.undermoonImagePullPolicy }}"
 - op: replace
   path: /spec/redisImage
   value: "{{ .Values.image.redisImage }}:{{ .Values.image.redisImageTag }}"

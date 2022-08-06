@@ -5,7 +5,7 @@ resources:
   - ../../bases
 
 namePrefix: undermoon-operator-
-namespace: "{{ .Release.Namespace }}"
+namespace: "{{ quote .Release.Namespace }}"
 
 patchesJson6902:
 - target:

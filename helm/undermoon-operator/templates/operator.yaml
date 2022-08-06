@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: undermoon-operator-storage
-  namespace: '{{ .Release.Namespace }}'
+  namespace: {{ quote .Release.Namespace }}
 spec:
   ports:
   - port: 9999
@@ -16,7 +16,7 @@ metadata:
   labels:
     control-plane: undermoon-operator
   name: undermoon-operator
-  namespace: '{{ .Release.Namespace }}'
+  namespace: {{ quote .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -40,9 +40,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: UNDERMOON_OPERATOR_BROKER_API_VERSION
-          value: '{{ .Values.broker_api_version | default "v3" }}'
-        image: '{{ .Values.image.operatorImage }}:{{ .Values.image.operatorImageTag }}'
-        imagePullPolicy: '{{ .Values.image.operatorImagePullPolicy }}'
+          value: {{ .Values.broker_api_version | default "v3" | quote }}
+        image: {{ .Values.image.operatorImage }}:{{ .Values.image.operatorImageTag }}
+        imagePullPolicy: {{ quote .Values.image.operatorImagePullPolicy }}
         name: manager
         resources:
           limits:
