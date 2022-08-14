@@ -20,18 +20,22 @@ const (
 
 var _ framework.FilterPlugin = &UndermoonTopology{}
 
+// UndermoonTopology supports that master and replica will not be in the same node.
 type UndermoonTopology struct {
 }
 
+// New creates UndermoonTopology
 func New(plArgs runtime.Object, handle framework.Handle) (framework.Plugin, error) {
 	klog.V(0).Infof("Plugin args: %+v", plArgs)
 	return &UndermoonTopology{}, nil
 }
 
+// Name returns the name of UndermoonTopology
 func (s *UndermoonTopology) Name() string {
 	return PluginName
 }
 
+// Filter supports that master and replica will not be in the same node.
 // TODO: Need locking for a undermoon cluster
 func (s *UndermoonTopology) Filter(ctx context.Context, state *framework.CycleState, pod *v1.Pod, node *framework.NodeInfo) *framework.Status {
 	serviceType, ok := pod.Labels["undermoonService"]

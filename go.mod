@@ -13,6 +13,7 @@ require (
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v0.18.6
