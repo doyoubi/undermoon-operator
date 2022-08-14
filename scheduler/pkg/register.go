@@ -5,6 +5,7 @@ import (
 	"k8s.io/kubernetes/cmd/kube-scheduler/app"
 )
 
+// Register registers the plugin to command
 func Register() *cobra.Command {
 	return app.NewSchedulerCommand(
 		app.WithPlugin(PluginName, New),
