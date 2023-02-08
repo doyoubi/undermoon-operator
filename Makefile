@@ -1,5 +1,5 @@
 # Current Operator version
-VERSION ?= v0.4.2-dev0
+VERSION ?= v0.4.2
 SCHEDULER_VERSION ?= v0.1.0
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
@@ -26,7 +26,7 @@ SCHEDULER_IMG_VERSION ?= latest
 else
 IMG_NAME ?= undermoon-operator
 UNDERMOON_IMG_NAME ?= doyoubi/undermoon
-UNDERMOON_IMG_VERSION ?= 0.6.1-buster
+UNDERMOON_IMG_VERSION ?= 0.6.2-buster
 SCHEDULER_IMG_NAME ?= doyoubi/undermoon-scheduler
 SCHEDULER_IMG_VERSION ?= $(SCHEDULER_VERSION)
 endif
